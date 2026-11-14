@@ -7,12 +7,14 @@
   <title>About Us | AbideCrest Media</title>
   <link rel="stylesheet" href="../assets/site.css">
   <style>
-    .about-hero{position:relative;isolation:isolate;padding:72px 0 26px;max-width:780px}
-    .about-hero::before{content:"";position:absolute;z-index:-1;left:50%;top:-62px;transform:translateX(-50%);width:min(460px,86vw);aspect-ratio:1;background:url("../assets/abidecrest_faith_media_logo.png") center/contain no-repeat;opacity:.15;pointer-events:none}
-    .about-hero > *{position:relative;z-index:1}
-    .about-hero h1{margin:12px 0 22px}
-    .about-hero .lead{max-width:680px}
+    .about-hero{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(250px,.9fr);gap:30px;align-items:center;padding:62px 0 36px;max-width:100%}
+    .about-hero-copy{min-width:0}
+    .about-hero h1{margin:12px 0 22px;font-size:clamp(2.6rem,5.1vw,3.8rem);overflow-wrap:normal}
+    .about-hero .lead{max-width:640px}
     .about-hero h1 em{color:var(--green);font-style:normal}
+    .about-hero-logo{display:flex;align-items:center;justify-content:center;min-width:0;padding:20px 10px;position:relative;isolation:isolate}
+    .about-hero-logo::before{content:"";position:absolute;inset:5% -3%;z-index:-1;border-radius:50%;background:radial-gradient(ellipse at center,rgba(215,196,146,.22),rgba(96,129,105,.08) 53%,transparent 76%);pointer-events:none}
+    .about-hero-logo img{display:block;width:100%;height:auto;max-width:340px;opacity:.9;filter:brightness(1.6) contrast(1.12) drop-shadow(0 12px 24px rgba(0,0,0,.45))}
     .about-section{margin:24px 0}
     .about-section h2{margin-top:0}
     .about-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
@@ -25,7 +27,7 @@
     .scripture-ref span{font-size:.89rem;border:1px solid #73664c;border-radius:30px;padding:4px 12px;color:#e9dcbe}
     .action-row{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:22px}
     .action-row .text-link{font-weight:700}
-    @media(max-width:620px){.about-hero{padding:42px 0 16px}.about-hero::before{width:min(340px,88vw);top:-30px}.about-grid{grid-template-columns:1fr}}
+    @media(max-width:760px){.about-hero{grid-template-columns:1fr;gap:2px;padding:42px 0 16px}.about-hero h1{font-size:clamp(2.35rem,7vw,3.6rem)}.about-hero-logo{padding:0 12px 14px}.about-hero-logo img{max-width:270px}.about-grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -39,9 +41,14 @@
   </header>
   <main>
     <section class="about-hero">
-      <p class="eyebrow">Who we are</p>
-      <h1>Rooted in Faith.<br><em>Created with Purpose.</em></h1>
-      <p class="lead">AbideCrest Media is an independent creative studio bringing imagination, thoughtful design, and technology together to create meaningful experiences.</p>
+      <div class="about-hero-copy">
+        <p class="eyebrow">Who we are</p>
+        <h1>Rooted in Faith.<br><em>Created with Purpose.</em></h1>
+        <p class="lead">AbideCrest Media is an independent creative studio bringing imagination, thoughtful design, and technology together to create meaningful experiences.</p>
+      </div>
+      <div class="about-hero-logo">
+        <img src="../assets/abidecrest_faith_media_logo.png" alt="AbideCrest Media mountain and cross emblem" width="1254" height="1254" loading="eager" decoding="async">
+      </div>
     </section>
 
     <section class="card about-section" aria-labelledby="story-heading">
