@@ -7,7 +7,9 @@
   <title>About Us | AbideCrest Media</title>
   <link rel="stylesheet" href="../assets/site.css">
   <style>
-    .about-hero{padding:72px 0 26px;max-width:780px}
+    .about-hero{position:relative;isolation:isolate;padding:72px 0 26px;max-width:780px}
+    .about-hero::before{content:"";position:absolute;z-index:-1;left:50%;top:-62px;transform:translateX(-50%);width:min(460px,86vw);aspect-ratio:1;background:url("../assets/abidecrest_faith_media_logo.png") center/contain no-repeat;opacity:.15;pointer-events:none}
+    .about-hero > *{position:relative;z-index:1}
     .about-hero h1{margin:12px 0 22px}
     .about-hero .lead{max-width:680px}
     .about-hero h1 em{color:var(--green);font-style:normal}
@@ -23,7 +25,7 @@
     .scripture-ref span{font-size:.89rem;border:1px solid #73664c;border-radius:30px;padding:4px 12px;color:#e9dcbe}
     .action-row{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:22px}
     .action-row .text-link{font-weight:700}
-    @media(max-width:620px){.about-hero{padding:42px 0 16px}.about-grid{grid-template-columns:1fr}}
+    @media(max-width:620px){.about-hero{padding:42px 0 16px}.about-hero::before{width:min(340px,88vw);top:-30px}.about-grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
