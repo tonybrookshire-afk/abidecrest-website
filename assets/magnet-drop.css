@@ -9,11 +9,12 @@
 .magnet-copy .eyebrow{color:#70f2b4}.magnet-tagline{font-weight:800;letter-spacing:.19em;color:#99fac5;font-size:.86rem;margin:0 0 16px}
 .magnet-copy .lead{max-width:570px;font-size:1.16rem;color:#dce7ea}
 .magnet-actions{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:27px}
-.magnet-download{min-height:64px;display:inline-flex;align-items:center;gap:14px;background:#f7fcf9;color:#0b1920;padding:9px 18px;border-radius:15px;text-decoration:none;box-shadow:0 12px 38px #0007;transition:transform .15s ease}
+.magnet-download{min-height:70px;display:inline-flex;align-items:center;justify-content:space-between;gap:24px;background:#f7fcf9;color:#0b1920;padding:12px 20px;border-radius:15px;text-decoration:none;box-shadow:0 12px 38px #0007;transition:transform .15s ease}
 .magnet-download:hover{transform:translateY(-2px)}
-.magnet-download span:nth-child(2){display:flex;flex-direction:column;line-height:1.1}
-.magnet-download small{font-size:.7rem;font-weight:650}.magnet-download strong{color:#071b15;font-size:1.5rem;letter-spacing:-.03em}
-.apple-symbol{font-size:1.4rem;color:#0b1920}.external-icon{font-size:1.2rem;padding-left:6px}
+.magnet-download > span:first-child{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;min-width:0;line-height:1.12}
+.magnet-download small{display:block;font-size:.72rem;font-weight:650;line-height:1.25;white-space:nowrap}
+.magnet-download strong{display:block;color:#071b15;font-size:1.5rem;line-height:1.12;letter-spacing:-.03em;white-space:nowrap}
+.magnet-download .external-icon{display:block;flex:none;font-size:1.2rem;line-height:1;padding-left:0}
 .magnet-secondary{display:inline-flex;align-items:center;border:1px solid #4e8372;border-radius:13px;color:#ddffee;font-weight:800;padding:14px 18px;text-decoration:none;min-height:51px}
 .magnet-secondary:hover{background:#183e37}
 .magnet-small{color:#aec4ca;font-size:.85rem;line-height:1.65;margin-top:15px}
