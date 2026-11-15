@@ -1,0 +1,78 @@
+.quest-page {
+  background: radial-gradient(ellipse at 78% 8%, #14263b, transparent 55%), var(--bg);
+}
+.quest-page nav [aria-current="page"] { color: var(--green); }
+.quest-page a:focus-visible { outline: 2px solid #83dcff; outline-offset: 5px; }
+.quest-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, .9fr);
+  align-items: center;
+  gap: clamp(24px, 5vw, 64px);
+  padding-block: clamp(32px, 7vw, 82px);
+}
+.quest-hero h1 { margin: .15em 0; font-size: clamp(2.9rem, 7.3vw, 5.5rem); }
+.quest-hook { margin: 16px 0 0; font-size: clamp(1.15rem, 3vw, 1.45rem); font-weight: 750; }
+.quest-hero .lead { margin: 10px 0 24px; }
+.quest-field {
+  position: relative;
+  overflow: hidden;
+  min-height: 280px;
+  aspect-ratio: 1.13;
+  border: 1px solid #355570;
+  border-radius: 24px;
+  background:
+    radial-gradient(ellipse at center, #183a5e, transparent 70%),
+    repeating-linear-gradient(0deg, #47769926 0 1px, transparent 1px 27px),
+    repeating-linear-gradient(90deg, #47769926 0 1px, transparent 1px 27px),
+    #090f1c;
+}
+.quest-orbit {
+  position: absolute;
+  inset: 19% 16%;
+  border: 1px solid #6092ac70;
+  border-radius: 50%;
+  transform: rotate(-26deg);
+  box-shadow: inset 0 0 22px #80d7ff12, 0 0 24px #80d7ff16;
+}
+.quest-pole, .quest-player, .quest-crystal { position: absolute; }
+.quest-pole {
+  width: 17%;
+  aspect-ratio: 1;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  box-shadow: 0 0 22px currentColor, inset 0 0 16px currentColor;
+}
+.quest-red { left: 12%; top: 25%; color: #ff626d; background: #721f38; }
+.quest-green { right: 12%; top: 19%; color: #70ff99; background: #135137; }
+.quest-player {
+  top: 50%;
+  left: 50%;
+  width: 14%;
+  aspect-ratio: 1;
+  border: 1px solid #b2eeff;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 32% 29%, #f6ffe9, #76fda1 28%, #1a7d58 75%);
+  box-shadow: 0 0 0 10px #56d8ff43, 0 0 38px 12px #63daff65;
+}
+.quest-crystal {
+  width: 6%;
+  aspect-ratio: 1;
+  transform: rotate(45deg);
+  border: 1px solid #b7f2ff;
+  background: linear-gradient(135deg, #e5fcff, #47bdfc 53%, #285ac1 54%, #438de7);
+  box-shadow: 0 0 18px #42bfffaf;
+}
+.quest-crystal-one { top: 65%; left: 70%; }
+.quest-crystal-two { top: 77%; left: 58%; }
+.quest-crystal-three { top: 83%; left: 43%; }
+.quest-play { padding-bottom: 24px; scroll-margin-top: 20px; }
+.quest-play h2 { margin-top: 0; font-size: clamp(1.75rem, 4vw, 2.3rem); }
+.quest-features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.quest-features .card { margin: 0; padding: 21px; }
+.quest-features h3, .quest-features p { margin-top: 0; }
+.quest-features p { margin-bottom: 0; color: var(--muted); }
+@media (max-width: 700px) {
+  .quest-hero, .quest-features { grid-template-columns: 1fr; }
+  .quest-field { min-height: 0; max-height: 340px; }
+}
