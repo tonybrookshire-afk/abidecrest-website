@@ -43,6 +43,7 @@ button:focus-visible, a:focus-visible { outline:3px solid #294cbb; outline-offse
       <button type="button" id="show">Show the letter</button>
     </div>
     <p id="prompt" aria-live="polite" hidden></p>
+    <audio id="letter-audio" preload="auto" hidden></audio>
     <div class="tiles" role="group" aria-label="Choose a letter">
       <button type="button" class="letter" id="first"></button>
       <button type="button" class="letter" id="second"></button>
@@ -64,15 +65,12 @@ const show = document.querySelector("#show");
 const prompt = document.querySelector("#prompt");
 const status = document.querySelector("#status");
 const next = document.querySelector("#next");
-const speech = window.speechSynthesis;
-const Utterance = window.SpeechSynthesisUtterance;
-const intro = document.querySelector(".intro");
-const hasSpeech = Boolean(speech && Utterance);
+const audio = document.querySelector("#letter-audio");
 let deck = [];
 let target = "";
 let answered = false;
-let visiblePrompt = !hasSpeech;
-let spokenPrompt = null;
+let visiblePrompt = false;
+let requestId = 0;
 
 function nextTarget() {
   if (!deck.length) {
@@ -86,32 +84,20 @@ function nextTarget() {
   return deck.pop();
 }
 
-function speakLetter() {
-  if (!hasSpeech) return;
-  try {
-    speech.cancel();
-    const speechLine = "Find the letter " + target + ".";
-    const utterance = new Utterance(speechLine);
-    spokenPrompt = utterance;
-    utterance.lang = "en-US";
-    utterance.rate = .82;
-    utterance.onerror = event => {
-      if (event.error !== "canceled" && event.error !== "interrupted" && spokenPrompt === utterance) {
-        visiblePrompt = true;
-        showPrompt();
-      }
-    };
-    speech.speak(utterance);
-  } catch {
+function playLetter() {
+  const request = ++requestId;
+  // Keep play() inside the tap handler so mobile browsers can start audio.
+  audio.currentTime = 0;
+  audio.play().catch(() => {
+    if (request !== requestId) return;
     visiblePrompt = true;
     showPrompt();
-  }
+  });
 }
 
 function showPrompt() {
   prompt.textContent = "Find " + target;
   prompt.hidden = !visiblePrompt;
-  show.hidden = !hasSpeech;
   show.textContent = visiblePrompt ? "Hide the letter" : "Show the letter";
   show.setAttribute("aria-expanded", String(visiblePrompt));
 }
@@ -119,6 +105,8 @@ function showPrompt() {
 function newRound() {
   answered = false;
   target = nextTarget();
+  requestId++;
+  audio.src = "audio/" + target.toLowerCase() + ".mp3";
   const distractors = alphabet.filter(letter => letter !== target);
   const secondLetter = distractors[Math.floor(Math.random() * distractors.length)];
   const choices = Math.random() < .5 ? [target, secondLetter] : [secondLetter, target];
@@ -148,17 +136,15 @@ for (const button of letters) {
   });
 }
 
-hear.hidden = !hasSpeech;
-if (!hasSpeech) intro.textContent = "Tap the letter that matches.";
-hear.addEventListener("click", speakLetter);
+hear.addEventListener("click", playLetter);
 show.addEventListener("click", () => {
   visiblePrompt = !visiblePrompt;
   showPrompt();
 });
 next.addEventListener("click", () => {
   newRound();
-  (hasSpeech ? hear : letters[0]).focus({preventScroll:true});
-  speakLetter();
+  hear.focus({preventScroll:true});
+  playLetter();
 });
 newRound();
 </script>
