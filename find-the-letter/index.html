@@ -43,6 +43,16 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline:3px solid 
 .letter:disabled { opacity:1; cursor:default }
 .result { min-height:53px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-top:12px }
 #status { margin:0; font-size:1.05rem; font-weight:700 }
+
+.character-friends { margin:14px 0 0; padding:14px 18px; background:#fffdfa; border:1px solid #e6dccf; border-radius:18px }
+.character-friends h2 { margin:0 0 10px; font-size:1rem }
+.character-list { display:flex; flex-wrap:wrap; gap:12px 18px }
+.character-list figure { margin:0; text-align:center; font-weight:750 }
+.character-portrait { position:relative; overflow:hidden; width:clamp(68px,17vw,94px); aspect-ratio:1; border-radius:50%; border:2px solid #d9c6b4; background:#f9edda }
+.character-portrait img { position:absolute; width:var(--sheet-width); height:auto; max-width:none; top:var(--crop-top); left:var(--crop-left) }
+.character-shell { --sheet-width:366%; --crop-top:-43%; --crop-left:-46% }
+.character-barnaby { --sheet-width:338%; --crop-top:0%; --crop-left:-33% }
+.character-list figcaption { margin-top:4px }
 </style>
 </head>
 <body>
@@ -72,6 +82,19 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline:3px solid 
     <div class="result">
       <p id="status" role="status"></p>
       <button type="button" id="next" hidden>Next letter →</button>
+    </div>
+  </section>
+  <section class="character-friends" aria-labelledby="friends-heading">
+    <h2 id="friends-heading">Play with our friends</h2>
+    <div class="character-list">
+      <figure>
+        <div class="character-portrait character-shell"><img src="art/shell.webp" width="640" height="681" alt="Shell, a turtle with glasses and a green visor" decoding="async"></div>
+        <figcaption>Shell</figcaption>
+      </figure>
+      <figure>
+        <div class="character-portrait character-barnaby"><img src="art/barnaby-duo.webp" width="720" height="480" alt="Barnaby, a smiling brown bear" decoding="async"></div>
+        <figcaption>Barnaby</figcaption>
+      </figure>
     </div>
   </section>
   <section class="stats" aria-labelledby="stats-heading">
