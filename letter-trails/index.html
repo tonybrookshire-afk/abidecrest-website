@@ -452,15 +452,23 @@ function fireworkSounds(bursts) {
     for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
   }
   const start = audio.currentTime + .22;
-  const challenge = level.value === "Challenge";
+  const difficulty = level.value;
+  const strength = { Easy:.20, Normal:.24, Challenge:.28 }[difficulty];
   for (const [index, burst] of bursts.entries()) {
-    const finalBoom = challenge && index === bursts.length - 1;
+    const finalBoom = difficulty === "Challenge" && index === bursts.length - 1;
+    const at = start + burst.delay / 1000;
+    const boom = audio.createOscillator();
+    boom.type = "triangle";
+    boom.frequency.setValueAtTime(finalBoom ? 128 : 155 + index % 3 * 12, at);
+    boom.frequency.exponentialRampToValueAtTime(finalBoom ? 48 : 65, at + .18);
+    playSound(boom, at, finalBoom ? .64 : .37, finalBoom ? .38 : strength);
+
     const crackle = audio.createBufferSource();
     crackle.buffer = fireworkNoise;
     const filter = audio.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.value = finalBoom ? 1200 : 2050 + index % 3 * 280;
-    playSound(crackle, start + burst.delay / 1000, finalBoom ? .46 : .19, finalBoom ? .18 : .09, filter);
+    filter.frequency.value = finalBoom ? 1600 : 2100 + index % 3 * 250;
+    playSound(crackle, at, finalBoom ? .46 : .28, finalBoom ? .20 : .12, filter);
   }
 }
 
@@ -505,7 +513,7 @@ function celebrate() {
     last.delay += 300;
   }
   fireworkSounds(starts);
-  const start = performance.now();
+  const start = performance.now() + (reduced ? 0 : 220);
 
   function animate(now) {
     sparks = [];
