@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Trace winding alphabet paths in Letter Trails, a browser game from AbideCrest Media.">
+<meta name="description" content="Match letters along winding alphabet paths in Letter Trails, a browser game from AbideCrest Media.">
 <title>Letter Trails | AbideCrest Media</title>
 <style>
 * { box-sizing:border-box }
@@ -19,7 +19,7 @@ button,select,input { min-height:44px; font:inherit; padding:8px 10px; border-ra
 button { cursor:pointer; background:#a8efd6; color:#142c29; font-weight:750 }
 input { width:5rem }
 [hidden] { display:none!important }
-canvas { width:100%; height:clamp(340px,58svh,660px); display:block; touch-action:none; border-radius:18px }
+canvas { width:100%; height:clamp(440px,65svh,710px); display:block; touch-action:none; border-radius:18px }
 #status { min-height:2.5em; margin:10px 0 0 }
 </style>
 </head>
@@ -27,14 +27,14 @@ canvas { width:100%; height:clamp(340px,58svh,660px); display:block; touch-actio
 <main>
 <header><a href="../">← AbideCrest Media</a></header>
 <h1>Letter Trails</h1>
-<p>Follow the line from a top letter to its lowercase match.</p>
+<p>Drag a lowercase letter to the open end of the line that leads to its uppercase match.</p>
 <div class="controls">
   <label>Board style <select id="theme"><option>Classic</option><option>Rainbow</option><option>Space</option><option>Notebook</option></select></label>
   <label>Difficulty <select id="level"><option>Easy</option><option>Normal</option><option selected>Challenge</option></select></label>
   <label id="line-control">Lines (7–16) <input id="lines" type="number" min="7" max="16" value="7" inputmode="numeric"></label>
   <button type="button" id="new">New Board</button>
 </div>
-<canvas id="board" aria-label="Letter tracing board" aria-describedby="status">Letter Trails requires a browser with canvas support.</canvas>
+<canvas id="board" aria-label="Letter matching board" aria-describedby="status">Letter Trails requires a browser with canvas support.</canvas>
 <p id="status" role="status"></p>
 <noscript><p>Enable JavaScript to play Letter Trails.</p></noscript>
 </main>
@@ -56,7 +56,10 @@ const palettes = {
 const rainbow = ["#ac2652","#94500c","#176a55","#166797","#763d93"];
 const steps = 160;
 let routes = [];
-let trace = null;
+let tiles = [];
+let drag = null;
+let sparks = [];
+let frame = null;
 let width, height, scale, radius;
 
 function shuffle(items) {
@@ -87,12 +90,15 @@ function makeBoard() {
     exit, letter:letters[index], done:false,
     bend:(Math.random() * 2 - 1) * (challenge ? .8 : .24)
   }));
+  tiles = routes.map(route => ({ letter:route.letter }));
+  shuffle(tiles);
+  stopFireworks();
   layout();
-  status.textContent = "Drag from a top letter to start.";
+  status.textContent = "0 of " + count + " letters matched.";
 }
 
 function layout() {
-  trace = null;
+  drag = null;
   const bounds = board.getBoundingClientRect();
   width = bounds.width;
   height = bounds.height;
@@ -103,13 +109,21 @@ function layout() {
   const lane = (width - inset * 2) / routes.length;
   const stagger = routes.length > 8 ? 44 : 0;
   radius = Math.min(20, lane * (stagger ? .84 : .46));
+  const columns = Math.min(8, tiles.length);
+  const trayHeight = tiles.length > columns ? 106 : 57;
+  const trayTop = height - trayHeight;
+  tiles.forEach((tile, i) => {
+    const row = Math.floor(i / columns);
+    const rowCount = Math.min(columns, tiles.length - row * columns);
+    tile.point = {x:(i % columns + .5) * width / rowCount, y:trayTop + 28 + row * 47};
+  });
   for (const [index, route] of routes.entries()) {
     const startX = inset + (index + .5) * lane;
     const endX = inset + (route.exit + .5) * lane;
     const startY = 25 + index % 2 * stagger;
-    const endY = height - 25 - route.exit % 2 * stagger;
+    const endY = trayTop - 25 - route.exit % 2 * stagger;
     const top = 51 + stagger;
-    const bottom = height - top;
+    const bottom = trayTop - top;
     route.points = Array.from({length:steps + 1}, (_, i) => {
       const t = i / steps;
       if (t < .17) return {x:startX, y:startY + (top - startY) * t / .17};
@@ -151,35 +165,99 @@ function artwork(palette) {
   }
 }
 
+function chip(point, letter, radius, palette, border, filled = true) {
+  ctx.beginPath();
+  ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = filled ? palette.chip : palette.paper;
+  ctx.fill();
+  ctx.strokeStyle = border;
+  ctx.lineWidth = filled ? 2 : 1.5;
+  ctx.setLineDash(filled ? [] : [3, 3]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = palette.ink;
+  ctx.font = "750 " + Math.round(radius * 1.1) + "px system-ui";
+  ctx.fillText(letter, point.x, point.y + 1);
+}
+
+function tileRadius() {
+  return Math.min(19, width / Math.min(8, tiles.length) * .43);
+}
+
 function draw() {
   const palette = palettes[theme.value];
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   artwork(palette);
+  const divider = tiles[0].point.y - 28;
+  ctx.fillStyle = palette.line;
+  ctx.fillRect(0, divider, width, 1);
+
   for (const route of routes) stroke(route.points, 0, steps, palette.line, 2);
   routes.forEach((route, i) => {
-    if (route.done) stroke(route.points, 0, steps, theme.value === "Rainbow" ? rainbow[i % rainbow.length] : palette.active, 4);
+    if (!route.done) return;
+    const color = theme.value === "Rainbow" ? rainbow[i % rainbow.length] : palette.active;
+    ctx.globalAlpha = .23;
+    stroke(route.points, 0, steps, color, 10);
+    ctx.globalAlpha = 1;
+    stroke(route.points, 0, steps, color, 4);
   });
-  if (trace) {
-    const start = level.value === "Challenge" ? Math.max(0, trace.progress - 21) : 0;
-    stroke(trace.route.points, start, trace.progress, palette.paper, 9);
-    stroke(trace.route.points, start, trace.progress, palette.active, 5);
-  }
+
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = "750 " + Math.round(radius * 1.08) + "px system-ui";
+  const hovered = drag && findTarget(drag.point);
   for (const route of routes) {
-    for (const [point, letter] of [[route.points[0], route.letter], [route.points[steps], route.letter.toLowerCase()]]) {
-      ctx.beginPath();
-      ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
-      ctx.fillStyle = palette.chip;
-      ctx.fill();
-      ctx.strokeStyle = route.done ? palette.active : palette.line;
-      ctx.lineWidth = route.done ? 3 : 1.5;
-      ctx.stroke();
-      ctx.fillStyle = palette.ink;
-      ctx.fillText(letter, point.x, point.y + 1);
-    }
+    const border = route.done || hovered === route ? palette.active : palette.line;
+    chip(route.points[0], route.letter, radius, palette, border);
+    chip(route.points[steps], route.done ? route.letter.toLowerCase() : "", radius, palette, border, route.done);
   }
+  for (const tile of tiles) {
+    if (tile === drag?.tile || routes.some(route => route.done && route.letter === tile.letter)) continue;
+    chip(tile.point, tile.letter.toLowerCase(), tileRadius(), palette, palette.line);
+  }
+  if (drag) chip(drag.point, drag.tile.letter.toLowerCase(), tileRadius(), palette, palette.active);
+  for (const spark of sparks) {
+    ctx.globalAlpha = spark.opacity;
+    ctx.fillStyle = spark.color;
+    ctx.beginPath();
+    ctx.arc(spark.x * width, spark.y * height, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function stopFireworks() {
+  if (frame !== null) cancelAnimationFrame(frame);
+  frame = null;
+  sparks = [];
+}
+
+function celebrate() {
+  const colors = ["#f25d87", "#ffb43a", "#25ad84", "#448ef4", "#9658ec"];
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const start = performance.now();
+
+  function animate(now) {
+    sparks = [];
+    for (let burst = 0; burst < 4; burst++) {
+      const age = reduced ? .45 : (now - start - burst * 260) / 1000;
+      if (age < 0 || age > 1.25) continue;
+      for (let i = 0; i < 30; i++) {
+        const angle = i * Math.PI * 2 / 30;
+        const travel = Math.min(width, height) * age * (.12 + (i % 3) * .055);
+        sparks.push({
+          x:.2 + burst * .2 + Math.cos(angle) * travel / width,
+          y:.28 + (burst % 2) * .19 + (Math.sin(angle) * travel + age * age * 24) / height,
+          color:colors[(i + burst) % colors.length],
+          opacity:1 - age / 1.25
+        });
+      }
+    }
+    draw();
+    frame = !reduced && now - start < 2050 ? requestAnimationFrame(animate) : null;
+  }
+
+  if (reduced) animate(start);
+  else frame = requestAnimationFrame(animate);
 }
 
 function position(event) {
@@ -191,62 +269,55 @@ function distance(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-function advance(point) {
-  const tolerance = {Easy:24, Normal:17, Challenge:13}[level.value];
-  const {previous, route} = trace;
-  const segments = Math.max(1, Math.ceil(distance(previous, point) / 4));
-  for (let segment = 1; segment <= segments; segment++) {
-    const t = segment / segments;
-    const sample = {x:previous.x + (point.x - previous.x) * t, y:previous.y + (point.y - previous.y) * t};
-    const end = Math.min(steps, trace.progress + 8);
-    let best = tolerance;
-    for (let i = trace.progress; i <= end; i++) {
-      const gap = distance(sample, route.points[i]);
-      if (gap < best) {
-        best = gap;
-        trace.progress = i;
-      }
-    }
+function findTarget(point) {
+  let closest = radius + 7;
+  let target;
+  for (const route of routes) {
+    const gap = distance(point, route.points[steps]);
+    if (gap >= closest) continue;
+    closest = gap;
+    target = route;
   }
-  trace.previous = point;
+  return target;
 }
 
 board.addEventListener("pointerdown", event => {
-  if (trace || event.button !== 0) return;
+  if (drag || event.button !== 0) return;
   const point = position(event);
-  const route = routes.find(item => !item.done && distance(point, item.points[0]) <= radius);
-  if (!route) return;
+  const tile = tiles.find(item => distance(point, item.point) <= tileRadius() + 2 &&
+    !routes.some(route => route.done && route.letter === item.letter));
+  if (!tile) return;
   board.setPointerCapture(event.pointerId);
-  trace = {id:event.pointerId, route, progress:0, previous:point};
+  drag = {id:event.pointerId, tile, point};
+  draw();
 });
 
 board.addEventListener("pointermove", event => {
-  if (trace?.id !== event.pointerId) return;
-  const samples = event.getCoalescedEvents?.() || [];
-  for (const sample of samples) advance(position(sample));
-  advance(position(event));
+  if (drag?.id !== event.pointerId) return;
+  drag.point = position(event);
   draw();
 });
 
 board.addEventListener("pointerup", event => {
-  if (trace?.id !== event.pointerId) return;
-  const point = position(event);
-  advance(point);
-  if (trace.progress >= steps - 3 && distance(point, trace.route.points[steps]) <= radius) {
-    trace.route.done = true;
+  if (drag?.id !== event.pointerId) return;
+  const { tile } = drag;
+  drag = null;
+  const target = findTarget(position(event));
+  if (target && !target.done && target.letter === tile.letter) {
+    target.done = true;
     const done = routes.filter(route => route.done).length;
-    status.textContent = done === routes.length ? "Board complete! Tap New Board to play again."
-      : done + " of " + routes.length + " trails complete.";
-  } else {
-    status.textContent = "Try " + trace.route.letter + " again. Follow its path through each crossing.";
+    status.textContent = done === routes.length ? "Board complete! You matched every letter."
+      : target.letter + " matches " + tile.letter.toLowerCase() + ". " + done + " of " + routes.length + " matched.";
+    if (done === routes.length) celebrate();
+  } else if (target) {
+    status.textContent = "Try another line for " + tile.letter.toLowerCase() + ".";
   }
-  trace = null;
   draw();
 });
 
 function cancel(event) {
-  if (trace?.id !== event.pointerId) return;
-  trace = null;
+  if (drag?.id !== event.pointerId) return;
+  drag = null;
   draw();
 }
 
