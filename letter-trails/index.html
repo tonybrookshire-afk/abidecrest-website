@@ -17,7 +17,11 @@ p { margin:6px 0 12px; color:#d8e4f1 }
 label { display:grid; gap:4px; font-size:.83rem; font-weight:700 }
 button,select,input { min-height:44px; font:inherit; padding:8px 10px; border-radius:10px; border:1px solid #8398b4; background:#20314a; color:white }
 button { cursor:pointer; background:#a8efd6; color:#142c29; font-weight:750 }
-input { width:5rem }
+input[type="number"] { width:5rem }
+.timer-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 12px }
+.timer-controls label:first-child { display:flex; align-items:center; min-height:44px }
+.timer-controls input[type="checkbox"] { min-height:0; width:18px; height:18px; margin:0 7px 0 0; accent-color:#a8efd6 }
+#countdown { font-variant-numeric:tabular-nums; min-width:7ch; font-weight:750 }
 [hidden] { display:none!important }
 canvas { width:100%; height:clamp(440px,65svh,710px); display:block; touch-action:none; border-radius:18px }
 #status { min-height:2.5em; margin:10px 0 0 }
@@ -34,6 +38,14 @@ canvas { width:100%; height:clamp(440px,65svh,710px); display:block; touch-actio
   <label id="line-control">Lines <input id="lines" type="number" min="7" max="16" value="7" inputmode="numeric"></label>
   <button type="button" id="new">New Board</button>
 </div>
+<div id="timer-controls" class="timer-controls">
+  <label><input type="checkbox" id="timed"> Timed Challenge</label>
+  <label id="time-control" hidden>Time limit (seconds)
+    <input id="time-limit" type="number" min="1" max="60" step="0.1" inputmode="decimal" aria-describedby="time-help">
+  </label>
+  <span id="countdown" aria-label="Time remaining" hidden></span>
+  <small id="time-help" hidden>Leave blank for the automatic limit. The clock starts on your first drag.</small>
+</div>
 <canvas id="board" aria-label="Letter matching board" aria-describedby="status">Letter Trails requires a browser with canvas support.</canvas>
 <p id="status" role="status"></p>
 <noscript><p>Enable JavaScript to play Letter Trails.</p></noscript>
@@ -47,6 +59,12 @@ const theme = document.querySelector("#theme");
 const level = document.querySelector("#level");
 const lines = document.querySelector("#lines");
 const status = document.querySelector("#status");
+const timerControls = document.querySelector("#timer-controls");
+const timed = document.querySelector("#timed");
+const timeControl = document.querySelector("#time-control");
+const timeLimit = document.querySelector("#time-limit");
+const timeHelp = document.querySelector("#time-help");
+const countdown = document.querySelector("#countdown");
 const palettes = {
   Classic: { paper:"#fcfbf5", line:"#7d8999", chip:"#fff", ink:"#192b42", active:"#08745f" },
   Rainbow: { paper:"#fff3fc", line:"#948397", chip:"#fff", ink:"#412446", active:"#7641a1" },
@@ -64,6 +82,10 @@ let drag = null;
 let sparks = [];
 let frame = null;
 let width, height, scale, radius;
+let duration = 0;
+let deadline = null;
+let ticking = null;
+let expired = false;
 
 function shuffle(items) {
   for (let i = items.length - 1; i > 0; i--) {
@@ -96,8 +118,54 @@ function makeBoard() {
   tiles = routes.map(route => ({ letter:route.letter }));
   shuffle(tiles);
   stopFireworks();
+  resetClock(challenge, count);
   layout();
   status.textContent = "0 of " + count + " letters matched.";
+}
+
+function updateCountdown(milliseconds) {
+  const seconds = Math.ceil(Math.max(0, milliseconds) / 100) / 10;
+  countdown.textContent = seconds.toFixed(1) + " s";
+}
+
+function stopClock() {
+  if (ticking !== null) clearInterval(ticking);
+  ticking = null;
+  deadline = null;
+}
+
+function resetClock(challenge, count) {
+  stopClock();
+  expired = false;
+  const enabled = challenge && timed.checked;
+  timerControls.hidden = !challenge;
+  timeControl.hidden = timeHelp.hidden = countdown.hidden = !enabled;
+  const automatic = (count * 1.2).toFixed(1);
+  timeLimit.placeholder = automatic;
+  const custom = timeLimit.valueAsNumber;
+  duration = enabled ? Math.round((Number.isFinite(custom) ? custom : Number(automatic)) * 1000) : 0;
+  if (enabled) updateCountdown(duration);
+}
+
+function clockAllowsPlay() {
+  if (expired) return false;
+  if (deadline === null) return true;
+  const remaining = deadline - performance.now();
+  updateCountdown(remaining);
+  if (remaining > 0) return true;
+  stopClock();
+  expired = true;
+  drag = null;
+  const done = routes.filter(route => route.done).length;
+  status.textContent = "Time’s up! You matched " + done + " of " + routes.length + ". Tap New Board to try again.";
+  draw();
+  return false;
+}
+
+function startClock() {
+  if (!duration || deadline !== null) return;
+  deadline = performance.now() + duration;
+  ticking = setInterval(clockAllowsPlay, 100);
 }
 
 function layout() {
@@ -329,24 +397,25 @@ function findTarget(point) {
 }
 
 board.addEventListener("pointerdown", event => {
-  if (drag || event.button !== 0) return;
+  if (drag || event.button !== 0 || !clockAllowsPlay()) return;
   const point = position(event);
   const tile = tiles.find(item => distance(point, item.point) <= tileRadius() + 2 &&
     !routes.some(route => route.done && route.letter === item.letter));
   if (!tile) return;
   board.setPointerCapture(event.pointerId);
+  startClock();
   drag = {id:event.pointerId, tile, point};
   draw();
 });
 
 board.addEventListener("pointermove", event => {
-  if (drag?.id !== event.pointerId) return;
+  if (drag?.id !== event.pointerId || !clockAllowsPlay()) return;
   drag.point = position(event);
   draw();
 });
 
 board.addEventListener("pointerup", event => {
-  if (drag?.id !== event.pointerId) return;
+  if (drag?.id !== event.pointerId || !clockAllowsPlay()) return;
   const { tile } = drag;
   drag = null;
   const target = findTarget(position(event));
@@ -355,7 +424,10 @@ board.addEventListener("pointerup", event => {
     const done = routes.filter(route => route.done).length;
     status.textContent = done === routes.length ? "Board complete! You matched every letter."
       : target.letter + " matches " + tile.letter.toLowerCase() + ". " + done + " of " + routes.length + " matched.";
-    if (done === routes.length) celebrate();
+    if (done === routes.length) {
+      stopClock();
+      celebrate();
+    }
   } else if (target) {
     status.textContent = "Try another line for " + tile.letter.toLowerCase() + ".";
   }
@@ -379,6 +451,14 @@ lines.addEventListener("change", () => {
   lineCounts[difficulty] = Number.isFinite(entered)
     ? Math.max(minimum, Math.min(maxLines, Math.round(entered)))
     : minimum;
+  makeBoard();
+});
+timed.addEventListener("change", makeBoard);
+timeLimit.addEventListener("change", () => {
+  const entered = timeLimit.valueAsNumber;
+  timeLimit.value = Number.isFinite(entered)
+    ? Math.max(1, Math.min(60, Math.round(entered * 10) / 10))
+    : "";
   makeBoard();
 });
 theme.addEventListener("change", draw);
