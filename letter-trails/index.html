@@ -25,6 +25,13 @@ input[type="number"] { width:5rem }
 [hidden] { display:none!important }
 canvas { width:100%; height:clamp(440px,65svh,710px); display:block; touch-action:none; border-radius:18px }
 #status { min-height:2.5em; margin:10px 0 0 }
+.page-footer { display:grid; gap:12px; margin-top:10px }
+.page-footer section, .page-footer aside { border:1px solid #42566f; border-radius:14px; background:#172439; padding:14px }
+.page-footer h2 { font-size:1rem; margin:0 0 8px }
+.page-footer p { margin:8px 0 0; font-size:.9rem }
+.page-footer dl { display:flex; flex-wrap:wrap; gap:10px 22px; margin:0 }
+.page-footer dt { font-size:.85rem; color:#d8e4f1 }
+.page-footer dd { margin:4px 0 0; font-size:1.25rem; font-weight:750; font-variant-numeric:tabular-nums }
 </style>
 </head>
 <body>
@@ -49,6 +56,21 @@ canvas { width:100%; height:clamp(440px,65svh,710px); display:block; touch-actio
 <canvas id="board" aria-label="Letter matching board" aria-describedby="status">Letter Trails requires a browser with canvas support.</canvas>
 <p id="status" role="status"></p>
 <noscript><p>Enable JavaScript to play Letter Trails.</p></noscript>
+<footer class="page-footer">
+  <section aria-labelledby="stats-heading">
+    <h2 id="stats-heading">Your Letter Trails stats</h2>
+    <dl>
+      <div><dt>Page views</dt><dd id="stats-views">0</dd></div>
+      <div><dt>Games played</dt><dd id="stats-games">0</dd></div>
+      <div><dt>Lines matched</dt><dd id="stats-matches">0</dd></div>
+    </dl>
+    <p id="stats-note">Saved in this browser.</p>
+  </section>
+  <aside aria-labelledby="studio-promo">
+    <h2 id="studio-promo">More from AbideCrest Media</h2>
+    <a href="../magnet-drop/">Explore Magnet Drop: Polarity →</a>
+  </aside>
+</footer>
 </main>
 <script>
 "use strict";
@@ -88,6 +110,59 @@ let duration = 0;
 let deadline = null;
 let ticking = null;
 let expired = false;
+let boardStarted = false;
+const statsKey = "abidecrest.letter-trails.stats.v1";
+const statsFields = {
+  views: document.querySelector("#stats-views"),
+  games: document.querySelector("#stats-games"),
+  matches: document.querySelector("#stats-matches")
+};
+const stats = { views:0, games:0, matches:0 };
+let persistentStats = true;
+const numberFormat = new Intl.NumberFormat();
+
+function loadStats(raw) {
+  const saved = JSON.parse(raw) || {};
+  for (const key of Object.keys(stats)) {
+    stats[key] = Number.isSafeInteger(saved[key]) && saved[key] >= 0 ? saved[key] : 0;
+  }
+}
+
+function showStats() {
+  for (const key of Object.keys(stats)) statsFields[key].textContent = numberFormat.format(stats[key]);
+  if (!persistentStats) {
+    document.querySelector("#stats-note").textContent = "Saved for this visit.";
+  }
+}
+
+function recordStat(key) {
+  if (persistentStats) {
+    try {
+      loadStats(localStorage.getItem(statsKey));
+    } catch {
+      persistentStats = false;
+    }
+  }
+  stats[key] += 1;
+  if (persistentStats) {
+    try {
+      localStorage.setItem(statsKey, JSON.stringify(stats));
+    } catch {
+      persistentStats = false;
+    }
+  }
+  showStats();
+}
+
+window.addEventListener("storage", event => {
+  if (!persistentStats || event.key !== statsKey) return;
+  try {
+    loadStats(event.newValue);
+    showStats();
+  } catch {
+    // Ignore unreadable data written by another tab.
+  }
+});
 
 function shuffle(items) {
   for (let i = items.length - 1; i > 0; i--) {
@@ -97,6 +172,7 @@ function shuffle(items) {
 }
 
 function makeBoard() {
+  boardStarted = false;
   const difficulty = level.value;
   const challenge = difficulty === "Challenge";
   const count = lineCounts[difficulty];
@@ -404,6 +480,10 @@ board.addEventListener("pointerdown", event => {
   if (!tile) return;
   board.setPointerCapture(event.pointerId);
   startClock();
+  if (!boardStarted) {
+    boardStarted = true;
+    recordStat("games");
+  }
   drag = {id:event.pointerId, tile, point};
   draw();
 });
@@ -421,6 +501,7 @@ board.addEventListener("pointerup", event => {
   const target = findTarget(position(event));
   if (target && !target.done && target.letter === tile.letter) {
     target.done = true;
+    recordStat("matches");
     const done = routes.filter(route => route.done).length;
     status.textContent = done === routes.length ? "Board complete! You matched every letter."
       : target.letter + " matches " + tile.letter.toLowerCase() + ". " + done + " of " + routes.length + " matched.";
@@ -462,6 +543,7 @@ timeLimit.addEventListener("change", () => {
   makeBoard();
 });
 theme.addEventListener("change", draw);
+recordStat("views");
 makeBoard();
 new ResizeObserver(layout).observe(board);
 </script>
