@@ -222,7 +222,15 @@ function draw() {
     ctx.globalAlpha = spark.opacity;
     ctx.fillStyle = spark.color;
     ctx.beginPath();
-    ctx.arc(spark.x * width, spark.y * height, 3, 0, Math.PI * 2);
+    if (spark.tail) {
+      ctx.strokeStyle = spark.color;
+      ctx.lineWidth = spark.size;
+      ctx.moveTo(spark.tail.x * width, spark.tail.y * height);
+      ctx.lineTo(spark.x * width, spark.y * height);
+      ctx.stroke();
+      ctx.beginPath();
+    }
+    ctx.arc(spark.x * width, spark.y * height, spark.size, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.globalAlpha = 1;
@@ -234,29 +242,65 @@ function stopFireworks() {
   sparks = [];
 }
 
+const finales = {
+  Easy: { bursts:3, particles:18, rings:1, spread:.16, interval:380, lifetime:1000,
+    colors:["#dd476f", "#e79816", "#258b79"] },
+  Normal: { bursts:5, particles:26, rings:2, spread:.22, interval:310, lifetime:1200,
+    colors:["#235fcc", "#c03786", "#e77e17", "#6555ce"] },
+  Challenge: { bursts:7, particles:34, rings:3, spread:.27, interval:250, lifetime:1400,
+    colors:["#d83a70", "#d79310", "#117b68", "#397ce1", "#8a46cb"] }
+};
+
 function celebrate() {
-  const colors = ["#f25d87", "#ffb43a", "#25ad84", "#448ef4", "#9658ec"];
+  const finale = finales[level.value];
+  const extra = Math.floor((routes.length - defaultCounts[level.value]) / 3);
+  const count = finale.bursts + extra;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const starts = Array.from({ length:count }, (_, i) => ({
+    x:.2 + (i * 7 % 11) * .06,
+    y:.22 + (i * 3 % 7) * .075,
+    delay:i * finale.interval,
+    particles:finale.particles
+  }));
+  const last = starts[count - 1];
+  if (level.value === "Challenge") {
+    last.x = .5;
+    last.y = .35;
+    last.particles *= 2;
+    last.delay += 300;
+  }
   const start = performance.now();
 
   function animate(now) {
     sparks = [];
-    for (let burst = 0; burst < 4; burst++) {
-      const age = reduced ? .45 : (now - start - burst * 260) / 1000;
-      if (age < 0 || age > 1.25) continue;
-      for (let i = 0; i < 30; i++) {
-        const angle = i * Math.PI * 2 / 30;
-        const travel = Math.min(width, height) * age * (.12 + (i % 3) * .055);
+    const elapsed = now - start;
+    for (const [index, burst] of starts.entries()) {
+      if (reduced && index >= 3 && burst !== last) continue;
+      const age = reduced ? .58 : (elapsed - burst.delay) / finale.lifetime;
+      if (age < 0 || age >= 1) continue;
+      const radius = Math.min(width, height) * finale.spread * (burst.particles > finale.particles ? 1.35 : 1);
+      for (let i = 0; i < burst.particles; i++) {
+        const ring = i % finale.rings;
+        const angle = i * 2.399963 + index;
+        const spread = radius * (1 - ring * .22);
+        const pointAt = time => {
+          const travel = spread * (1 - (1 - time) ** 2);
+          return {
+            x:burst.x + Math.cos(angle) * travel / width,
+            y:burst.y + (Math.sin(angle) * travel + time * time * 36) / height
+          };
+        };
         sparks.push({
-          x:.2 + burst * .2 + Math.cos(angle) * travel / width,
-          y:.28 + (burst % 2) * .19 + (Math.sin(angle) * travel + age * age * 24) / height,
-          color:colors[(i + burst) % colors.length],
-          opacity:1 - age / 1.25
+          ...pointAt(age),
+          tail:!reduced && finale.rings > 1 ? pointAt(Math.max(0, age - .10)) : null,
+          color:finale.colors[(i + index) % finale.colors.length],
+          size:ring === 0 ? 2.5 : 1.6,
+          opacity:Math.min(1, (1 - age) * 2)
         });
       }
     }
     draw();
-    frame = !reduced && now - start < 2050 ? requestAnimationFrame(animate) : null;
+    frame = !reduced && elapsed < last.delay + finale.lifetime ? requestAnimationFrame(animate) : null;
   }
 
   if (reduced) animate(start);
