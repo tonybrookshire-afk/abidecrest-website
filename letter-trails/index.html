@@ -91,12 +91,24 @@ const timeLimit = document.querySelector("#time-limit");
 const timeHelp = document.querySelector("#time-help");
 const countdown = document.querySelector("#countdown");
 const palettes = {
-  Classic: { paper:"#fcfbf5", line:"#7d8999", chip:"#fff", ink:"#192b42", active:"#08745f" },
-  Rainbow: { paper:"#fff3fc", line:"#948397", chip:"#fff", ink:"#412446", active:"#7641a1" },
-  Space: { paper:"#131c38", line:"#8d9abd", chip:"#24365e", ink:"#fff", active:"#80f1d6" },
-  Notebook: { paper:"#fff7e6", line:"#887d86", chip:"#fffdf7", ink:"#403649", active:"#2c599f" }
+  Classic: { paper:"#fcfbf5", line:"#7d8999", chip:"#fff", ink:"#192b42" },
+  Rainbow: { paper:"#fff3fc", line:"#948397", chip:"#fff", ink:"#412446" },
+  Space: { paper:"#131c38", line:"#8d9abd", chip:"#24365e", ink:"#fff" },
+  Notebook: { paper:"#fff7e6", line:"#887d86", chip:"#fffdf7", ink:"#403649" }
 };
-const rainbow = ["#ac2652","#94500c","#176a55","#166797","#763d93"];
+const letterColors = [
+  "#b12442", "#11669d", "#19714f", "#7242a7", "#a94a0c", "#00716f", "#9a2c75", "#4756b0",
+  "#78650a", "#923e37", "#447826", "#5c4b83", "#aa315e", "#2c6076", "#6e4c28", "#144f8e"
+];
+const spaceLetterColors = [
+  "#ff829c", "#68c3ff", "#70e1a7", "#caa2ff", "#ffab64", "#62e0db", "#ff91dd", "#a8acff",
+  "#e7d66d", "#ff9b90", "#b1df75", "#bea9d8", "#ff95b9", "#83c5d9", "#e0b481", "#85b5ff"
+];
+
+function letterColor(route) {
+  const colors = theme.value === "Space" ? spaceLetterColors : letterColors;
+  return colors[route.colorIndex];
+}
 const steps = 160;
 const defaultCounts = { Easy:3, Normal:5, Challenge:7 };
 const lineCounts = { ...defaultCounts };
@@ -193,10 +205,10 @@ function makeBoard() {
   }
   const letters = count === 7 ? "LMNOPQR" : "ABCDEFGHIJKLMNOP";
   routes = exits.map((exit, index) => ({
-    exit, letter:letters[index], done:false,
+    exit, letter:letters[index], colorIndex:index, done:false,
     bend:(Math.random() * 2 - 1) * (challenge ? .8 : .24)
   }));
-  tiles = routes.map(route => ({ letter:route.letter }));
+  tiles = routes.map(route => ({ route }));
   shuffle(tiles);
   stopFireworks();
   stopSounds();
@@ -322,7 +334,7 @@ function chip(point, letter, radius, palette, border, filled = true) {
   ctx.fillStyle = filled ? palette.chip : palette.paper;
   ctx.fill();
   ctx.strokeStyle = border;
-  ctx.lineWidth = filled ? 2 : 1.5;
+  ctx.lineWidth = filled ? 2.5 : 1.5;
   ctx.setLineDash(filled ? [] : [3, 3]);
   ctx.stroke();
   ctx.setLineDash([]);
@@ -344,9 +356,9 @@ function draw() {
   ctx.fillRect(0, divider, width, 1);
 
   for (const route of routes) stroke(route.points, 0, steps, palette.line, 2);
-  routes.forEach((route, i) => {
+  routes.forEach(route => {
     if (!route.done) return;
-    const color = theme.value === "Rainbow" ? rainbow[i % rainbow.length] : palette.active;
+    const color = letterColor(route);
     ctx.globalAlpha = .23;
     stroke(route.points, 0, steps, color, 10);
     ctx.globalAlpha = 1;
@@ -357,15 +369,16 @@ function draw() {
   ctx.textBaseline = "middle";
   const hovered = drag && findTarget(drag.point);
   for (const route of routes) {
-    const border = route.done || hovered === route ? palette.active : palette.line;
-    chip(route.points[0], route.letter, radius, palette, border);
-    chip(route.points[steps], route.done ? route.letter.toLowerCase() : "", radius, palette, border, route.done);
+    const color = letterColor(route);
+    chip(route.points[0], route.letter, radius, palette, color);
+    const targetBorder = route.done ? color : hovered === route ? palette.ink : palette.line;
+    chip(route.points[steps], route.done ? route.letter.toLowerCase() : "", radius, palette, targetBorder, route.done);
   }
   for (const tile of tiles) {
-    if (tile === drag?.tile || routes.some(route => route.done && route.letter === tile.letter)) continue;
-    chip(tile.point, tile.letter.toLowerCase(), tileRadius(), palette, palette.line);
+    if (tile === drag?.tile || tile.route.done) continue;
+    chip(tile.point, tile.route.letter.toLowerCase(), tileRadius(), palette, letterColor(tile.route));
   }
-  if (drag) chip(drag.point, drag.tile.letter.toLowerCase(), tileRadius(), palette, palette.active);
+  if (drag) chip(drag.point, drag.tile.route.letter.toLowerCase(), tileRadius(), palette, letterColor(drag.tile.route));
   for (const spark of sparks) {
     ctx.globalAlpha = spark.opacity;
     ctx.fillStyle = spark.color;
@@ -650,8 +663,7 @@ function findTarget(point) {
 board.addEventListener("pointerdown", event => {
   if (drag || event.button !== 0 || !clockAllowsPlay()) return;
   const point = position(event);
-  const tile = tiles.find(item => distance(point, item.point) <= tileRadius() + 2 &&
-    !routes.some(route => route.done && route.letter === item.letter));
+  const tile = tiles.find(item => !item.route.done && distance(point, item.point) <= tileRadius() + 2);
   if (!tile) return;
   board.setPointerCapture(event.pointerId);
   enableAudio();
@@ -675,19 +687,19 @@ board.addEventListener("pointerup", event => {
   const { tile } = drag;
   drag = null;
   const target = findTarget(position(event));
-  if (target && !target.done && target.letter === tile.letter) {
+  if (target === tile.route && !target.done) {
     target.done = true;
     matchChime();
     recordStat("matches");
     const done = routes.filter(route => route.done).length;
     status.textContent = done === routes.length ? "Board complete! You matched every letter."
-      : target.letter + " matches " + tile.letter.toLowerCase() + ". " + done + " of " + routes.length + " matched.";
+      : target.letter + " matches " + tile.route.letter.toLowerCase() + ". " + done + " of " + routes.length + " matched.";
     if (done === routes.length) {
       stopClock();
       celebrate();
     }
   } else if (target) {
-    status.textContent = "Try another line for " + tile.letter.toLowerCase() + ".";
+    status.textContent = "Try another line for " + tile.route.letter.toLowerCase() + ".";
   }
   draw();
 });
