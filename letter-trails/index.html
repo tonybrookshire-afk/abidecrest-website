@@ -385,7 +385,7 @@ function draw() {
 }
 
 let audio = null;
-let fireworkNoise = null;
+const fireworkSamples = new Map();
 const playingSounds = new Set();
 
 function soundEnabled() {
@@ -444,31 +444,80 @@ function matchChime() {
   });
 }
 
+function renderFirework(sampleRate, variant, large) {
+  const sample = new Float32Array(Math.ceil(sampleRate * (large ? 1.35 : 1.05)));
+  let seed = 127 + variant * 137 + Number(large) * 79;
+  const random = () => {
+    seed = (Math.imul(1664525, seed) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+
+  function impulse(offset, length, brightness, bass, strength) {
+    const start = Math.round(offset * sampleRate);
+    const count = Math.min(sample.length - start, Math.ceil(length * sampleRate));
+    const lowMix = 1 - Math.exp(-2 * Math.PI * bass / sampleRate);
+    const brightMix = 1 - Math.exp(-2 * Math.PI * brightness / sampleRate);
+    let low = 0;
+    let bright = 0;
+    for (let i = 0; i < count; i++) {
+      const noise = random() * 2 - 1;
+      low += (noise - low) * lowMix;
+      bright += (noise - bright) * brightMix;
+      const age = i / sampleRate;
+      const attack = Math.min(1, (i + 1) / (sampleRate * .0013));
+      const report = (bright - low) * Math.exp(-age / (length * .063));
+      const rumble = low * Math.exp(-age / (length * .21));
+      sample[start + i] += strength * attack * (report * .9 + rumble * 1.6);
+    }
+  }
+
+  impulse(0, large ? .85 : .55, large ? 3200 : 4600, large ? 72 : 108, 1.35);
+  impulse(.065 + variant * .013, .58, 950, 90, .42);
+  impulse(.16 + variant * .019, .57, 550, 68, .23);
+  impulse(.28 + variant * .023, .49, 320, 54, .14);
+
+  const crackles = large ? 25 : 14 + variant * 3;
+  for (let i = 0; i < crackles; i++) {
+    const when = .105 + (random() ** 1.4) * (large ? .86 : .65);
+    const strength = (.08 + random() * .18) * (1 - when * .6);
+    impulse(when, .028 + random() * .06, 1900 + random() * 3600, 260, strength);
+  }
+  const fade = Math.round(sampleRate * .045);
+  for (let i = 0; i < sample.length; i++) {
+    const tail = Math.min(1, (sample.length - 1 - i) / fade);
+    sample[i] = Math.tanh(sample[i]) * tail;
+  }
+  return sample;
+}
+
 function fireworkSounds(bursts) {
   if (!soundEnabled() || audio?.state !== "running") return;
-  if (!fireworkNoise) {
-    fireworkNoise = audio.createBuffer(1, Math.ceil(audio.sampleRate * .48), audio.sampleRate);
-    const samples = fireworkNoise.getChannelData(0);
-    for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
-  }
   const start = audio.currentTime + .22;
   const difficulty = level.value;
-  const strength = { Easy:.20, Normal:.24, Challenge:.28 }[difficulty];
+  const gain = { Easy:.43, Normal:.50, Challenge:.57 }[difficulty];
   for (const [index, burst] of bursts.entries()) {
-    const finalBoom = difficulty === "Challenge" && index === bursts.length - 1;
-    const at = start + burst.delay / 1000;
-    const boom = audio.createOscillator();
-    boom.type = "triangle";
-    boom.frequency.setValueAtTime(finalBoom ? 128 : 155 + index % 3 * 12, at);
-    boom.frequency.exponentialRampToValueAtTime(finalBoom ? 48 : 65, at + .18);
-    playSound(boom, at, finalBoom ? .64 : .37, finalBoom ? .38 : strength);
-
-    const crackle = audio.createBufferSource();
-    crackle.buffer = fireworkNoise;
-    const filter = audio.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = finalBoom ? 1600 : 2100 + index % 3 * 250;
-    playSound(crackle, at, finalBoom ? .46 : .28, finalBoom ? .20 : .12, filter);
+    const large = difficulty === "Challenge" && index === bursts.length - 1;
+    const variant = index % 3;
+    const key = large ? "finale" : variant;
+    if (!fireworkSamples.has(key)) {
+      const sample = renderFirework(audio.sampleRate, variant, large);
+      const buffer = audio.createBuffer(1, sample.length, audio.sampleRate);
+      buffer.getChannelData(0).set(sample);
+      fireworkSamples.set(key, buffer);
+    }
+    const source = audio.createBufferSource();
+    source.buffer = fireworkSamples.get(key);
+    const volume = audio.createGain();
+    volume.gain.value = large ? .75 : gain;
+    source.connect(volume);
+    volume.connect(audio.destination);
+    playingSounds.add(source);
+    source.onended = () => {
+      playingSounds.delete(source);
+      source.disconnect();
+      volume.disconnect();
+    };
+    source.start(start + burst.delay / 1000);
   }
 }
 
