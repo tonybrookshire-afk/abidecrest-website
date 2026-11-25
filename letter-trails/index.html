@@ -41,10 +41,10 @@ canvas { width:100%; height:clamp(440px,65svh,710px); display:block; touch-actio
 <div id="timer-controls" class="timer-controls">
   <label><input type="checkbox" id="timed"> Timed Challenge</label>
   <label id="time-control" hidden>Time limit (seconds)
-    <input id="time-limit" type="number" min="1" max="60" step="0.1" inputmode="decimal" aria-describedby="time-help">
+    <input id="time-limit" type="number" min="1" max="180" step="0.1" placeholder="30" inputmode="decimal" aria-describedby="time-help">
   </label>
   <span id="countdown" aria-label="Time remaining" hidden></span>
-  <small id="time-help" hidden>Leave blank for the automatic limit. The clock starts on your first drag.</small>
+  <small id="time-help" hidden>Leave blank for the 30-second default. The clock starts on your first drag.</small>
 </div>
 <canvas id="board" aria-label="Letter matching board" aria-describedby="status">Letter Trails requires a browser with canvas support.</canvas>
 <p id="status" role="status"></p>
@@ -76,6 +76,8 @@ const steps = 160;
 const defaultCounts = { Easy:3, Normal:5, Challenge:7 };
 const lineCounts = { ...defaultCounts };
 const maxLines = 16;
+const defaultTimeLimit = 30;
+const maxTimeLimit = 180;
 let routes = [];
 let tiles = [];
 let drag = null;
@@ -118,7 +120,7 @@ function makeBoard() {
   tiles = routes.map(route => ({ letter:route.letter }));
   shuffle(tiles);
   stopFireworks();
-  resetClock(challenge, count);
+  resetClock(challenge);
   layout();
   status.textContent = "0 of " + count + " letters matched.";
 }
@@ -134,16 +136,14 @@ function stopClock() {
   deadline = null;
 }
 
-function resetClock(challenge, count) {
+function resetClock(challenge) {
   stopClock();
   expired = false;
   const enabled = challenge && timed.checked;
   timerControls.hidden = !challenge;
   timeControl.hidden = timeHelp.hidden = countdown.hidden = !enabled;
-  const automatic = (count * 1.2).toFixed(1);
-  timeLimit.placeholder = automatic;
   const custom = timeLimit.valueAsNumber;
-  duration = enabled ? Math.round((Number.isFinite(custom) ? custom : Number(automatic)) * 1000) : 0;
+  duration = enabled ? Math.round((Number.isFinite(custom) ? custom : defaultTimeLimit) * 1000) : 0;
   if (enabled) updateCountdown(duration);
 }
 
@@ -457,7 +457,7 @@ timed.addEventListener("change", makeBoard);
 timeLimit.addEventListener("change", () => {
   const entered = timeLimit.valueAsNumber;
   timeLimit.value = Number.isFinite(entered)
-    ? Math.max(1, Math.min(60, Math.round(entered * 10) / 10))
+    ? Math.max(1, Math.min(maxTimeLimit, Math.round(entered * 10) / 10))
     : "";
   makeBoard();
 });
