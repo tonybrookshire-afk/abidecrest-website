@@ -31,7 +31,7 @@ canvas { width:100%; height:clamp(440px,65svh,710px); display:block; touch-actio
 <div class="controls">
   <label>Board style <select id="theme"><option>Classic</option><option>Rainbow</option><option>Space</option><option>Notebook</option></select></label>
   <label>Difficulty <select id="level"><option>Easy</option><option>Normal</option><option selected>Challenge</option></select></label>
-  <label id="line-control">Lines (7–16) <input id="lines" type="number" min="7" max="16" value="7" inputmode="numeric"></label>
+  <label id="line-control">Lines <input id="lines" type="number" min="7" max="16" value="7" inputmode="numeric"></label>
   <button type="button" id="new">New Board</button>
 </div>
 <canvas id="board" aria-label="Letter matching board" aria-describedby="status">Letter Trails requires a browser with canvas support.</canvas>
@@ -55,6 +55,9 @@ const palettes = {
 };
 const rainbow = ["#ac2652","#94500c","#176a55","#166797","#763d93"];
 const steps = 160;
+const defaultCounts = { Easy:3, Normal:5, Challenge:7 };
+const lineCounts = { ...defaultCounts };
+const maxLines = 16;
 let routes = [];
 let tiles = [];
 let drag = null;
@@ -70,18 +73,18 @@ function shuffle(items) {
 }
 
 function makeBoard() {
-  const challenge = level.value === "Challenge";
-  document.querySelector("#line-control").hidden = !challenge;
-  const entered = lines.valueAsNumber;
-  const count = challenge ? Math.max(7, Math.min(16, Number.isFinite(entered) ? Math.round(entered) : 7))
-    : level.value === "Easy" ? 3 : 5;
-  if (challenge) lines.value = count;
+  const difficulty = level.value;
+  const challenge = difficulty === "Challenge";
+  const count = lineCounts[difficulty];
+  lines.min = defaultCounts[difficulty];
+  lines.max = maxLines;
+  lines.value = count;
 
   const exits = Array.from({length:count}, (_, i) => i);
   if (challenge) {
     shuffle(exits);
     if (exits.every((exit, i) => exit === i)) exits.push(exits.shift());
-  } else if (count === 5) {
+  } else if (difficulty === "Normal") {
     const i = Math.floor(Math.random() * (count - 1));
     [exits[i], exits[i + 1]] = [exits[i + 1], exits[i]];
   }
@@ -325,7 +328,15 @@ board.addEventListener("pointercancel", cancel);
 board.addEventListener("lostpointercapture", cancel);
 document.querySelector("#new").addEventListener("click", makeBoard);
 level.addEventListener("change", makeBoard);
-lines.addEventListener("change", makeBoard);
+lines.addEventListener("change", () => {
+  const difficulty = level.value;
+  const minimum = defaultCounts[difficulty];
+  const entered = lines.valueAsNumber;
+  lineCounts[difficulty] = Number.isFinite(entered)
+    ? Math.max(minimum, Math.min(maxLines, Math.round(entered)))
+    : minimum;
+  makeBoard();
+});
 theme.addEventListener("change", draw);
 makeBoard();
 new ResizeObserver(layout).observe(board);
