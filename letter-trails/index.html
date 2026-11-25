@@ -400,20 +400,33 @@ function draw() {
 let audio = null;
 const fireworkSamples = new Map();
 const playingSounds = new Set();
+let soundRevision = 0;
 
 function soundEnabled() {
   return soundToggle.getAttribute("aria-pressed") === "true";
 }
 
-function enableAudio() {
+function enableAudio(play) {
   if (!soundEnabled()) return;
   const Audio = window.AudioContext || window.webkitAudioContext;
   if (!Audio) return;
   try {
     if (!audio) audio = new Audio();
-    if (audio.state === "suspended" || audio.state === "interrupted") {
-      audio.resume().catch(() => {});
+    if (audio.state === "running") {
+      play?.();
+      return;
     }
+    if (audio.state === "closed") return;
+    const revision = soundRevision;
+    const requestedAt = performance.now();
+    audio.resume().then(() => {
+      if (revision === soundRevision && soundEnabled() &&
+          audio.state === "running" && performance.now() - requestedAt < 1000) {
+        play?.();
+      }
+    }).catch(() => {
+      // A blocked or interrupted session can retry on the next gesture.
+    });
   } catch {
     // The game remains playable when audio is unavailable.
   }
@@ -443,6 +456,7 @@ function playSound(source, start, length, volume, filter) {
 }
 
 function stopSounds() {
+  soundRevision++;
   if (!audio) return;
   for (const source of playingSounds) source.stop(audio.currentTime);
   playingSounds.clear();
@@ -529,12 +543,14 @@ function renderFirework(sampleRate, variant, large) {
   return sample;
 }
 
-function fireworkSounds(bursts) {
+function fireworkSounds(bursts, startAt) {
   if (!soundEnabled() || audio?.state !== "running") return;
-  const start = audio.currentTime + .22;
+  const start = audio.currentTime + (startAt - performance.now()) / 1000;
   const difficulty = level.value;
   const gain = { Easy:.43, Normal:.50, Challenge:.57 }[difficulty];
   for (const [index, burst] of bursts.entries()) {
+    const burstTime = start + burst.delay / 1000;
+    if (burstTime < audio.currentTime - .1) continue;
     const large = difficulty === "Challenge" && index === bursts.length - 1;
     const variant = index % 3;
     const key = large ? "finale" : variant;
@@ -556,14 +572,14 @@ function fireworkSounds(bursts) {
       source.disconnect();
       volume.disconnect();
     };
-    source.start(start + burst.delay / 1000);
+    source.start(Math.max(audio.currentTime, burstTime));
   }
 }
 
 soundToggle.addEventListener("click", () => {
   const enabled = !soundEnabled();
   soundToggle.setAttribute("aria-pressed", String(enabled));
-  if (enabled) enableAudio();
+  if (enabled) enableAudio(matchChime);
   else stopSounds();
 });
 
@@ -600,8 +616,9 @@ function celebrate() {
     last.particles *= 2;
     last.delay += 300;
   }
-  fireworkSounds(starts);
-  const start = performance.now() + (reduced ? 0 : 220);
+  const soundStart = performance.now() + 220;
+  const start = reduced ? performance.now() : soundStart;
+  enableAudio(() => fireworkSounds(starts, soundStart));
 
   function animate(now) {
     sparks = [];
@@ -666,7 +683,7 @@ board.addEventListener("pointerdown", event => {
   const tile = tiles.find(item => !item.route.done && distance(point, item.point) <= tileRadius() + 2);
   if (!tile) return;
   board.setPointerCapture(event.pointerId);
-  enableAudio();
+  if (event.pointerType === "mouse") enableAudio();
   startClock();
   if (!boardStarted) {
     boardStarted = true;
@@ -689,7 +706,7 @@ board.addEventListener("pointerup", event => {
   const target = findTarget(position(event));
   if (target === tile.route && !target.done) {
     target.done = true;
-    matchChime();
+    enableAudio(matchChime);
     recordStat("matches");
     const done = routes.filter(route => route.done).length;
     status.textContent = done === routes.length ? "Board complete! You matched every letter."
