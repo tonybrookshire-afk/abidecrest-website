@@ -118,6 +118,7 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline:3px solid 
       <div><dt>Page views</dt><dd id="view-count">0</dd></div>
       <div><dt>Games played</dt><dd id="game-count">0</dd></div>
       <div><dt>Letters matched</dt><dd id="match-count">0</dd></div>
+      <div><dt>Time played</dt><dd id="time-played">0 sec</dd></div>
     </dl>
     <p id="stats-note">Saved in this browser. Switching difficulty starts a new game when you make a choice.</p>
   </section>
@@ -143,10 +144,15 @@ const difficulty = document.querySelector("#difficulty");
 const statsFields = {
   views: document.querySelector("#view-count"),
   games: document.querySelector("#game-count"),
-  matches: document.querySelector("#match-count")
+  matches: document.querySelector("#match-count"),
+  playMs: document.querySelector("#time-played")
 };
 const statsKey = "abidecrest.find-the-letter.stats.v1";
-const stats = {views:0, games:0, matches:0};
+const stats = {views:0, games:0, matches:0, playMs:0};
+const playIdleMs = 60000;
+const playSaveMs = 5000;
+let playSince = null;
+let lastPlayAction = 0;
 const numberFormat = new Intl.NumberFormat();
 const fourChoiceThreshold = 5;
 let keepStats = true;
@@ -168,7 +174,8 @@ let visiblePrompt = true;
 let requestId = 0;
 
 function showStats() {
-  for (const key of Object.keys(stats)) statsFields[key].textContent = numberFormat.format(stats[key]);
+  for (const key of ["views", "games", "matches"]) statsFields[key].textContent = numberFormat.format(stats[key]);
+  showPlayTime();
   if (!keepStats) document.querySelector("#stats-note").textContent = "Saved for this visit.";
 }
 
@@ -179,7 +186,7 @@ function loadStats(raw) {
   }
 }
 
-function countStat(key) {
+function countStat(key, amount = 1) {
   if (keepStats) {
     try {
       loadStats(localStorage.getItem(statsKey));
@@ -187,7 +194,7 @@ function countStat(key) {
       keepStats = false;
     }
   }
-  stats[key]++;
+  stats[key] += amount;
   if (keepStats) {
     try {
       localStorage.setItem(statsKey, JSON.stringify(stats));
@@ -196,6 +203,38 @@ function countStat(key) {
     }
   }
   showStats();
+}
+
+function unsavedPlayTime(now) {
+  if (playSince === null) return 0;
+  return Math.max(0, Math.floor(Math.min(now, lastPlayAction + playIdleMs) - playSince));
+}
+
+function showPlayTime(now = performance.now()) {
+  const totalSeconds = Math.floor((stats.playMs + unsavedPlayTime(now)) / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor(totalSeconds / 60) % 60;
+  const seconds = totalSeconds % 60;
+  statsFields.playMs.textContent = [
+    hours ? numberFormat.format(hours) + " hr" : "",
+    minutes ? minutes + " min" : "",
+    seconds || (!hours && !minutes) ? seconds + " sec" : ""
+  ].filter(Boolean).join(" ");
+}
+
+function savePlayTime(now, pause = false) {
+  const amount = unsavedPlayTime(now);
+  if (pause || now >= lastPlayAction + playIdleMs) playSince = null;
+  else playSince += amount;
+  if (amount) countStat("playMs", amount);
+}
+
+function recordPlayAction() {
+  if (document.visibilityState !== "visible") return;
+  const now = performance.now();
+  if (playSince !== null && now >= lastPlayAction + playIdleMs) savePlayTime(now, true);
+  if (playSince === null) playSince = now;
+  lastPlayAction = now;
 }
 
 function shuffle(items) {
@@ -215,6 +254,7 @@ function nextTarget() {
 }
 
 function playLetter() {
+  recordPlayAction();
   const request = ++requestId;
   // Keep play() inside the tap handler so mobile browsers can start audio.
   audio.currentTime = 0;
@@ -259,6 +299,7 @@ function newRound() {
 for (const button of letters) {
   button.addEventListener("click", () => {
     if (answered || button.hidden) return;
+    recordPlayAction();
     if (!gameStarted) {
       gameStarted = true;
       countStat("games");
@@ -286,6 +327,7 @@ difficulty.addEventListener("change", () => {
 });
 hear.addEventListener("click", playLetter);
 show.addEventListener("click", () => {
+  recordPlayAction();
   visiblePrompt = !visiblePrompt;
   showPrompt();
 });
@@ -294,6 +336,18 @@ next.addEventListener("click", () => {
   hear.focus({preventScroll:true});
   playLetter();
 });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden" && playSince !== null) savePlayTime(performance.now(), true);
+});
+window.addEventListener("pagehide", () => {
+  if (playSince !== null) savePlayTime(performance.now(), true);
+});
+setInterval(() => {
+  if (playSince === null) return;
+  const now = performance.now();
+  if (now - playSince >= playSaveMs || now >= lastPlayAction + playIdleMs) savePlayTime(now);
+  showPlayTime(now);
+}, 1000);
 countStat("views");
 newRound();
 </script>
