@@ -85,6 +85,9 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline:3px solid 
 "use strict";
 
 const alphabet = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
+const clarityWords = {
+  B:"ball", C:"cat", D:"dog", E:"egg", G:"goat", P:"pig", T:"turtle", V:"van", Z:"zebra"
+};
 const tiles = document.querySelector("#tiles");
 const letters = [...tiles.querySelectorAll(".letter")];
 const difficulty = document.querySelector("#difficulty");
@@ -164,6 +167,7 @@ function playLetter() {
   const request = ++requestId;
   // Keep play() inside the tap handler so mobile browsers can start audio.
   audio.currentTime = 0;
+  audio.playbackRate = clarityWords[target] ? .85 : 1;
   audio.play().catch(() => {
     if (request !== requestId) return;
     visiblePrompt = true;
@@ -172,7 +176,8 @@ function playLetter() {
 }
 
 function showPrompt() {
-  prompt.textContent = "Find " + target;
+  const example = clarityWords[target];
+  prompt.textContent = "Find " + target + (example ? " as in " + example : "");
   prompt.hidden = !visiblePrompt;
   show.textContent = visiblePrompt ? "Hide the letter" : "Show the letter";
   show.setAttribute("aria-expanded", String(visiblePrompt));
