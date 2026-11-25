@@ -25,6 +25,9 @@ input[type="number"] { width:5rem }
 #countdown { font-variant-numeric:tabular-nums; min-width:7ch; font-weight:750 }
 [hidden] { display:none!important }
 canvas { width:100%; height:clamp(440px,65svh,710px); display:block; touch-action:none; border-radius:18px }
+canvas.dense-board { height:clamp(540px,72svh,760px) }
+#variable-control { display:flex; align-items:center; min-height:44px; gap:6px }
+#variable-lines { min-height:0; width:18px; height:18px; margin:0; accent-color:#a8efd6 }
 #status { min-height:2.5em; margin:10px 0 0 }
 .page-footer { display:grid; gap:12px; margin-top:10px }
 .page-footer section, .page-footer aside { border:1px solid #42566f; border-radius:14px; background:#172439; padding:14px }
@@ -43,7 +46,8 @@ canvas { width:100%; height:clamp(440px,65svh,710px); display:block; touch-actio
 <div class="controls">
   <label>Board style <select id="theme"><option>Classic</option><option>Rainbow</option><option>Space</option><option>Notebook</option></select></label>
   <label>Difficulty <select id="level"><option>Easy</option><option>Normal</option><option selected>Challenge</option></select></label>
-  <label id="line-control">Lines <input id="lines" type="number" min="7" max="16" value="7" inputmode="numeric"></label>
+  <label id="line-control">Lines <input id="lines" type="number" min="7" max="21" value="7" inputmode="numeric"></label>
+  <label id="variable-control"><input id="variable-lines" type="checkbox"> Variable lines (7–21)</label>
   <button type="button" id="new">New Board</button>
   <button type="button" id="sound" aria-pressed="true">Sound</button>
 </div>
@@ -82,6 +86,8 @@ const ctx = board.getContext("2d");
 const theme = document.querySelector("#theme");
 const level = document.querySelector("#level");
 const lines = document.querySelector("#lines");
+const variableControl = document.querySelector("#variable-control");
+const variableLines = document.querySelector("#variable-lines");
 const status = document.querySelector("#status");
 const soundToggle = document.querySelector("#sound");
 const timerControls = document.querySelector("#timer-controls");
@@ -98,11 +104,13 @@ const palettes = {
 };
 const letterColors = [
   "#b12442", "#11669d", "#19714f", "#7242a7", "#a94a0c", "#00716f", "#9a2c75", "#4756b0",
-  "#78650a", "#923e37", "#447826", "#5c4b83", "#aa315e", "#2c6076", "#6e4c28", "#144f8e"
+  "#78650a", "#923e37", "#447826", "#5c4b83", "#aa315e", "#2c6076", "#6e4c28", "#144f8e",
+  "#8a2a52", "#316051", "#7a518e", "#ad4e52", "#335779"
 ];
 const spaceLetterColors = [
   "#ff829c", "#68c3ff", "#70e1a7", "#caa2ff", "#ffab64", "#62e0db", "#ff91dd", "#a8acff",
-  "#e7d66d", "#ff9b90", "#b1df75", "#bea9d8", "#ff95b9", "#83c5d9", "#e0b481", "#85b5ff"
+  "#e7d66d", "#ff9b90", "#b1df75", "#bea9d8", "#ff95b9", "#83c5d9", "#e0b481", "#85b5ff",
+  "#ffa1cc", "#80c7a6", "#dca8ec", "#ffb29e", "#a2c7f2"
 ];
 
 function letterColor(route) {
@@ -112,7 +120,7 @@ function letterColor(route) {
 const steps = 160;
 const defaultCounts = { Easy:3, Normal:5, Challenge:7 };
 const lineCounts = { ...defaultCounts };
-const maxLines = 16;
+const maximumCounts = { Easy:16, Normal:16, Challenge:21 };
 const defaultTimeLimit = 30;
 const maxTimeLimit = 180;
 let routes = [];
@@ -190,10 +198,22 @@ function makeBoard() {
   boardStarted = false;
   const difficulty = level.value;
   const challenge = difficulty === "Challenge";
-  const count = lineCounts[difficulty];
-  lines.min = defaultCounts[difficulty];
-  lines.max = maxLines;
+  const minimum = defaultCounts[difficulty];
+  const maximum = maximumCounts[difficulty];
+  const variable = challenge && variableLines.checked;
+  let count = lineCounts[difficulty];
+  if (variable) {
+    const previous = routes.length;
+    const choices = Array.from({ length:maximum - minimum + 1 }, (_, index) => minimum + index)
+      .filter(value => value !== previous);
+    count = choices[Math.floor(Math.random() * choices.length)];
+  }
+  variableControl.hidden = !challenge;
+  lines.readOnly = variable;
+  lines.min = minimum;
+  lines.max = maximum;
   lines.value = count;
+  board.classList.toggle("dense-board", count > 16);
 
   const exits = Array.from({length:count}, (_, i) => i);
   if (challenge) {
@@ -203,7 +223,7 @@ function makeBoard() {
     const i = Math.floor(Math.random() * (count - 1));
     [exits[i], exits[i + 1]] = [exits[i + 1], exits[i]];
   }
-  const letters = count === 7 ? "LMNOPQR" : "ABCDEFGHIJKLMNOP";
+  const letters = count === 7 ? "LMNOPQR" : "ABCDEFGHIJKLMNOPQRSTU";
   routes = exits.map((exit, index) => ({
     exit, letter:letters[index], colorIndex:index, done:false,
     bend:(Math.random() * 2 - 1) * (challenge ? .8 : .24)
@@ -270,10 +290,11 @@ function layout() {
   board.height = Math.round(height * scale);
   const inset = routes.length > 8 ? 12 : 0;
   const lane = (width - inset * 2) / routes.length;
-  const stagger = routes.length > 8 ? 44 : 0;
-  radius = Math.min(20, lane * (stagger ? .84 : .46));
-  const columns = Math.min(8, tiles.length);
-  const trayHeight = tiles.length > columns ? 106 : 57;
+  const endpointRows = routes.length > 16 ? 3 : routes.length > 8 ? 2 : 1;
+  const rowGap = endpointRows === 3 ? 37 : 44;
+  radius = Math.min(20, lane * (endpointRows === 3 ? .93 : endpointRows === 2 ? .84 : .46));
+  const columns = trayColumns();
+  const trayHeight = 57 + (Math.ceil(tiles.length / columns) - 1) * 47;
   const trayTop = height - trayHeight;
   tiles.forEach((tile, i) => {
     const row = Math.floor(i / columns);
@@ -283,9 +304,9 @@ function layout() {
   for (const [index, route] of routes.entries()) {
     const startX = inset + (index + .5) * lane;
     const endX = inset + (route.exit + .5) * lane;
-    const startY = 25 + index % 2 * stagger;
-    const endY = trayTop - 25 - route.exit % 2 * stagger;
-    const top = 51 + stagger;
+    const startY = 25 + index % endpointRows * rowGap;
+    const endY = trayTop - 25 - route.exit % endpointRows * rowGap;
+    const top = 51 + (endpointRows - 1) * rowGap;
     const bottom = trayTop - top;
     route.points = Array.from({length:steps + 1}, (_, i) => {
       const t = i / steps;
@@ -343,8 +364,12 @@ function chip(point, letter, radius, palette, border, filled = true) {
   ctx.fillText(letter, point.x, point.y + 1);
 }
 
+function trayColumns() {
+  return Math.min(routes.length > 16 ? 7 : 8, tiles.length);
+}
+
 function tileRadius() {
-  return Math.min(19, width / Math.min(8, tiles.length) * .43);
+  return Math.min(19, width / trayColumns() * .43);
 }
 
 function draw() {
@@ -736,10 +761,11 @@ lines.addEventListener("change", () => {
   const minimum = defaultCounts[difficulty];
   const entered = lines.valueAsNumber;
   lineCounts[difficulty] = Number.isFinite(entered)
-    ? Math.max(minimum, Math.min(maxLines, Math.round(entered)))
+    ? Math.max(minimum, Math.min(maximumCounts[difficulty], Math.round(entered)))
     : minimum;
   makeBoard();
 });
+variableLines.addEventListener("change", makeBoard);
 timed.addEventListener("change", makeBoard);
 timeLimit.addEventListener("change", () => {
   const entered = timeLimit.valueAsNumber;
