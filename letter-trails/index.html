@@ -17,6 +17,7 @@ p { margin:6px 0 12px; color:#d8e4f1 }
 label { display:grid; gap:4px; font-size:.83rem; font-weight:700 }
 button,select,input { min-height:44px; font:inherit; padding:8px 10px; border-radius:10px; border:1px solid #8398b4; background:#20314a; color:white }
 button { cursor:pointer; background:#a8efd6; color:#142c29; font-weight:750 }
+#sound[aria-pressed="false"] { background:#20314a; color:white }
 input[type="number"] { width:5rem }
 .timer-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 12px }
 .timer-controls label:first-child { display:flex; align-items:center; min-height:44px }
@@ -44,6 +45,7 @@ canvas { width:100%; height:clamp(440px,65svh,710px); display:block; touch-actio
   <label>Difficulty <select id="level"><option>Easy</option><option>Normal</option><option selected>Challenge</option></select></label>
   <label id="line-control">Lines <input id="lines" type="number" min="7" max="16" value="7" inputmode="numeric"></label>
   <button type="button" id="new">New Board</button>
+  <button type="button" id="sound" aria-pressed="true">Sound</button>
 </div>
 <div id="timer-controls" class="timer-controls">
   <label><input type="checkbox" id="timed"> Timed Challenge</label>
@@ -81,6 +83,7 @@ const theme = document.querySelector("#theme");
 const level = document.querySelector("#level");
 const lines = document.querySelector("#lines");
 const status = document.querySelector("#status");
+const soundToggle = document.querySelector("#sound");
 const timerControls = document.querySelector("#timer-controls");
 const timed = document.querySelector("#timed");
 const timeControl = document.querySelector("#time-control");
@@ -196,6 +199,7 @@ function makeBoard() {
   tiles = routes.map(route => ({ letter:route.letter }));
   shuffle(tiles);
   stopFireworks();
+  stopSounds();
   resetClock(challenge);
   layout();
   status.textContent = "0 of " + count + " letters matched.";
@@ -380,6 +384,93 @@ function draw() {
   ctx.globalAlpha = 1;
 }
 
+let audio = null;
+let fireworkNoise = null;
+const playingSounds = new Set();
+
+function soundEnabled() {
+  return soundToggle.getAttribute("aria-pressed") === "true";
+}
+
+function enableAudio() {
+  if (!soundEnabled()) return;
+  const Audio = window.AudioContext || window.webkitAudioContext;
+  if (!Audio) return;
+  try {
+    if (!audio) audio = new Audio();
+    if (audio.state === "suspended" || audio.state === "interrupted") {
+      audio.resume().catch(() => {});
+    }
+  } catch {
+    // The game remains playable when audio is unavailable.
+  }
+}
+
+function playSound(source, start, length, volume, filter) {
+  const gain = audio.createGain();
+  gain.gain.setValueAtTime(.0001, start);
+  gain.gain.exponentialRampToValueAtTime(volume, start + .012);
+  gain.gain.exponentialRampToValueAtTime(.0001, start + length);
+  if (filter) {
+    source.connect(filter);
+    filter.connect(gain);
+  } else {
+    source.connect(gain);
+  }
+  gain.connect(audio.destination);
+  playingSounds.add(source);
+  source.onended = () => {
+    playingSounds.delete(source);
+    source.disconnect();
+    filter?.disconnect();
+    gain.disconnect();
+  };
+  source.start(start);
+  source.stop(start + length);
+}
+
+function stopSounds() {
+  if (!audio) return;
+  for (const source of playingSounds) source.stop(audio.currentTime);
+  playingSounds.clear();
+}
+
+function matchChime() {
+  if (!soundEnabled() || audio?.state !== "running") return;
+  [660, 880].forEach((frequency, index) => {
+    const note = audio.createOscillator();
+    note.frequency.value = frequency;
+    playSound(note, audio.currentTime + index * .065, .18, .085);
+  });
+}
+
+function fireworkSounds(bursts) {
+  if (!soundEnabled() || audio?.state !== "running") return;
+  if (!fireworkNoise) {
+    fireworkNoise = audio.createBuffer(1, Math.ceil(audio.sampleRate * .48), audio.sampleRate);
+    const samples = fireworkNoise.getChannelData(0);
+    for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+  }
+  const start = audio.currentTime + .22;
+  const challenge = level.value === "Challenge";
+  for (const [index, burst] of bursts.entries()) {
+    const finalBoom = challenge && index === bursts.length - 1;
+    const crackle = audio.createBufferSource();
+    crackle.buffer = fireworkNoise;
+    const filter = audio.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = finalBoom ? 1200 : 2050 + index % 3 * 280;
+    playSound(crackle, start + burst.delay / 1000, finalBoom ? .46 : .19, finalBoom ? .18 : .09, filter);
+  }
+}
+
+soundToggle.addEventListener("click", () => {
+  const enabled = !soundEnabled();
+  soundToggle.setAttribute("aria-pressed", String(enabled));
+  if (enabled) enableAudio();
+  else stopSounds();
+});
+
 function stopFireworks() {
   if (frame !== null) cancelAnimationFrame(frame);
   frame = null;
@@ -413,6 +504,7 @@ function celebrate() {
     last.particles *= 2;
     last.delay += 300;
   }
+  fireworkSounds(starts);
   const start = performance.now();
 
   function animate(now) {
@@ -479,6 +571,7 @@ board.addEventListener("pointerdown", event => {
     !routes.some(route => route.done && route.letter === item.letter));
   if (!tile) return;
   board.setPointerCapture(event.pointerId);
+  enableAudio();
   startClock();
   if (!boardStarted) {
     boardStarted = true;
@@ -501,6 +594,7 @@ board.addEventListener("pointerup", event => {
   const target = findTarget(position(event));
   if (target && !target.done && target.letter === tile.letter) {
     target.done = true;
+    matchChime();
     recordStat("matches");
     const done = routes.filter(route => route.done).length;
     status.textContent = done === routes.length ? "Board complete! You matched every letter."
