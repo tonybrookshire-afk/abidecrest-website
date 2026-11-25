@@ -29,7 +29,8 @@ button { min-height:46px; border-radius:13px; border:2px solid transparent; curs
 #show { padding:8px 12px; background:transparent; color:#443c88; text-decoration:underline }
 button:focus-visible, select:focus-visible, a:focus-visible { outline:3px solid #294cbb; outline-offset:3px }
 [hidden] { display:none!important }
-#prompt { margin:9px 0 0; font-size:1.2rem; font-weight:750 }
+#prompt { display:flex; align-items:center; gap:12px; margin:12px 0 0; padding:8px 12px; background:#f6efff; border-radius:14px; font-size:clamp(1.08rem,4vw,1.35rem); font-weight:750 }
+#prompt-picture { flex:0 0 auto; font-size:clamp(2.3rem,10vw,3.5rem); line-height:1.15 }
 .tiles { display:grid; grid-template-columns:1fr 1fr; gap:clamp(8px,3vw,18px); margin:16px 0 0 }
 .letter { border-radius:20px; background:#dcecff; border-color:#709bca; min-height:clamp(98px,23vw,178px); font:800 clamp(3.75rem,19vw,7rem)/1 Arial,sans-serif }
 .tiles[data-count="3"] { grid-template-columns:repeat(3,minmax(0,1fr)) }
@@ -55,9 +56,12 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline:3px solid 
     </label>
     <div class="controls">
       <button type="button" id="hear">🔊 Hear the letter</button>
-      <button type="button" id="show">Show the letter</button>
+      <button type="button" id="show" aria-controls="prompt" aria-expanded="true">Hide the letter</button>
     </div>
-    <p id="prompt" aria-live="polite" hidden></p>
+    <p id="prompt" aria-live="polite">
+      <span id="prompt-picture" aria-hidden="true"></span>
+      <span id="prompt-text"></span>
+    </p>
     <audio id="letter-audio" preload="auto" hidden></audio>
     <div class="tiles" id="tiles" role="group" aria-label="Choose a letter">
       <button type="button" class="letter" id="first"></button>
@@ -85,9 +89,16 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline:3px solid 
 "use strict";
 
 const alphabet = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
-const clarityWords = {
-  B:"ball", C:"cat", D:"dog", E:"egg", G:"goat", P:"pig", T:"turtle", V:"van", Z:"zebra"
+const letterClues = {
+  A:["apple", "🍎"], B:["ball", "⚽"], C:["cat", "🐱"], D:["dog", "🐶"],
+  E:["egg", "🥚"], F:["fish", "🐟"], G:["goat", "🐐"], H:["hat", "🎩"],
+  I:["ice cream", "🍦"], J:["jellyfish", "🪼"], K:["kite", "🪁"], L:["lion", "🦁"],
+  M:["moon", "🌙"], N:["nest", "🪺"], O:["orange", "🍊"], P:["pig", "🐷"],
+  Q:["queen", "👸"], R:["rabbit", "🐰"], S:["sun", "☀️"], T:["turtle", "🐢"],
+  U:["umbrella", "☂️"], V:["van", "🚐"], W:["whale", "🐋"], X:["x-ray", "🩻"],
+  Y:["yarn", "🧶"], Z:["zebra", "🦓"]
 };
+const slowerLetters = new Set("BCDEGPTVZ");
 const tiles = document.querySelector("#tiles");
 const letters = [...tiles.querySelectorAll(".letter")];
 const difficulty = document.querySelector("#difficulty");
@@ -107,13 +118,15 @@ let hadWrongChoice = false;
 const hear = document.querySelector("#hear");
 const show = document.querySelector("#show");
 const prompt = document.querySelector("#prompt");
+const promptPicture = document.querySelector("#prompt-picture");
+const promptText = document.querySelector("#prompt-text");
 const status = document.querySelector("#status");
 const next = document.querySelector("#next");
 const audio = document.querySelector("#letter-audio");
 let deck = [];
 let target = "";
 let answered = false;
-let visiblePrompt = false;
+let visiblePrompt = true;
 let requestId = 0;
 
 function showStats() {
@@ -167,7 +180,7 @@ function playLetter() {
   const request = ++requestId;
   // Keep play() inside the tap handler so mobile browsers can start audio.
   audio.currentTime = 0;
-  audio.playbackRate = clarityWords[target] ? .85 : 1;
+  audio.playbackRate = slowerLetters.has(target) ? .85 : 1;
   audio.play().catch(() => {
     if (request !== requestId) return;
     visiblePrompt = true;
@@ -176,8 +189,9 @@ function playLetter() {
 }
 
 function showPrompt() {
-  const example = clarityWords[target];
-  prompt.textContent = "Find " + target + (example ? " as in " + example : "");
+  const [example, picture] = letterClues[target];
+  promptPicture.textContent = picture;
+  promptText.textContent = "Find " + target + " as in " + example;
   prompt.hidden = !visiblePrompt;
   show.textContent = visiblePrompt ? "Hide the letter" : "Show the letter";
   show.setAttribute("aria-expanded", String(visiblePrompt));
