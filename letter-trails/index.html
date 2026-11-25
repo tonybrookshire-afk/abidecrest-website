@@ -445,7 +445,7 @@ function matchChime() {
 }
 
 function renderFirework(sampleRate, variant, large) {
-  const sample = new Float32Array(Math.ceil(sampleRate * (large ? 1.35 : 1.05)));
+  const sample = new Float32Array(Math.ceil(sampleRate * (large ? 1.7 : 1.2)));
   let seed = 127 + variant * 137 + Number(large) * 79;
   const random = () => {
     seed = (Math.imul(1664525, seed) + 1013904223) >>> 0;
@@ -482,6 +482,32 @@ function renderFirework(sampleRate, variant, large) {
     const strength = (.08 + random() * .18) * (1 - when * .6);
     impulse(when, .028 + random() * .06, 1900 + random() * 3600, 260, strength);
   }
+  // Shape broadband noise into a short pressure thump and a longer, diffuse rumble.
+  function bassLayer(offset, frequency, quality, decay, strength) {
+    const start = Math.round(offset * sampleRate);
+    const omega = 2 * Math.PI * frequency / sampleRate;
+    const alpha = Math.sin(omega) / (2 * quality);
+    const feed = alpha / (1 + alpha);
+    const feedback1 = 2 * Math.cos(omega) / (1 + alpha);
+    const feedback2 = (1 - alpha) / (1 + alpha);
+    let input1 = 0, input2 = 0, output1 = 0, output2 = 0;
+    for (let i = start; i < sample.length; i++) {
+      const input = random() * 2 - 1;
+      const output = feed * (input - input2) + feedback1 * output1 - feedback2 * output2;
+      const age = (i - start) / sampleRate;
+      const envelope = Math.min(1, age / .013) * Math.exp(-age / decay);
+      sample[i] += output * envelope * strength * Math.sqrt(sampleRate / 48000);
+      input2 = input1;
+      input1 = input;
+      output2 = output1;
+      output1 = output;
+    }
+  }
+
+  bassLayer(.004, large ? 54 : 68 + variant * 5, .85, large ? .34 : .19, large ? 5.5 : 4.2);
+  bassLayer(.009, large ? 125 : 142 + variant * 8, 1.1, large ? .21 : .115, large ? 3.3 : 2.8);
+  bassLayer(large ? .19 : .13, large ? 49 : 59, .7, large ? .31 : .16, large ? 2.5 : 1.5);
+
   const fade = Math.round(sampleRate * .045);
   for (let i = 0; i < sample.length; i++) {
     const tail = Math.min(1, (sample.length - 1 - i) / fade);
