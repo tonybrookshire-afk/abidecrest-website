@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Guess the mystery object from clues, or build the character one part at a time to reveal letters.">
+<title>Mystery Object | AbideCrest Media</title>
+<style>
+*{box-sizing:border-box}
+:root{color-scheme:light;--ink:#22253e;--paper:#fffaf0;--purple:#48336d;--border:#dfd3c4}
+body{margin:0;background:#f1e7da;color:var(--ink);font:16px/1.5 system-ui,sans-serif}
+main{width:min(100% - 28px,56rem);margin:auto;padding:20px 0 36px}
+a{color:#48336d;font-weight:700}
+h1{font-size:clamp(2.4rem,8vw,4.3rem);line-height:1;margin:.25em 0 .45em;letter-spacing:-.06em}
+h2{font-size:1rem;margin:0;color:#6d3e31}
+p{margin:.4em 0 .8em}
+.game{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:clamp(14px,3vw,28px);padding:clamp(14px,3vw,26px);border:1px solid var(--border);border-radius:24px;background:var(--paper);box-shadow:0 10px 30px #422e1c13}
+.scene{position:relative;min-height:230px;border-radius:18px;background:#d9e8df;overflow:hidden;display:grid;place-items:center}
+.figure{position:relative;width:170px;height:205px}
+.part,.mystery,.hand{position:absolute}
+.part{background:#50456f;border:3px solid #34294f;border-radius:99px}
+.part[hidden], [hidden]{display:none!important}
+.head{width:54px;height:53px;left:58px;top:4px;background:#f1b78a}
+.head::after{content:"";position:absolute;width:4px;height:4px;left:14px;top:18px;border-radius:50%;background:#34294f;box-shadow:15px 0 #34294f}
+.torso{width:56px;height:73px;left:57px;top:54px;background:#c58ce4}
+.arm{width:15px;height:57px;top:57px;background:#f1b78a}
+.left-arm{left:47px;transform:rotate(24deg)}
+.right-arm{right:47px;transform:rotate(-24deg)}
+.leg{width:19px;height:62px;top:116px}
+.left-leg{left:62px;transform:rotate(12deg)}
+.right-leg{right:62px;transform:rotate(-12deg)}
+.mystery{width:74px;height:67px;top:76px;left:48px;display:grid;place-items:center;background:#48336d;color:white;border:3px solid #34294f;border-radius:18px;font-size:2rem;font-weight:900;z-index:1}
+.mystery.revealed{background:#fff2bd}
+.hand{width:16px;height:17px;top:107px;border-radius:50%;background:#f1b78a;border:2px solid #34294f;z-index:2}
+.hand.left{left:40px}.hand.right{right:40px}
+.word{display:flex;gap:8px 12px;flex-wrap:wrap;margin:12px 0 16px}
+.word-group{display:inline-flex;gap:3px}
+.letter{display:inline-grid;place-items:center;min-width:1.25ch;height:1.2em;border-bottom:2px solid #6d577e;font-size:clamp(1rem,4vw,1.55rem);font-weight:800}
+.actions,form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+label{display:block;width:100%;font-weight:700}
+button,input{min-height:44px;border-radius:10px;border:1px solid #9b87a8;font:inherit;padding:8px 12px}
+input{background:#fff;color:var(--ink);min-width:0;flex:1 1 125px}
+button{cursor:pointer;background:#ede2f4;color:#392453;font-weight:750}
+button.primary{background:var(--purple);color:white}
+button:disabled{opacity:.55;cursor:default}
+:focus-visible{outline:3px solid #1b7669;outline-offset:3px}
+#status{min-height:1.5em;font-weight:750;margin-top:12px}
+#hint{background:#f5e7d9;padding:8px 10px;border-radius:10px}
+@media(max-width:650px){.game{grid-template-columns:1fr}.scene{min-height:205px}}
+</style>
+<script src="objects.js" defer></script>
+<script src="game.js" defer></script>
+</head>
+<body>
+<main>
+<a href="../">← AbideCrest Media</a>
+<h1>What’s the Mystery Object?</h1>
+<section class="game" aria-label="Object guessing game">
+  <div class="scene" aria-label="Character holding a hidden object" role="img" id="scene">
+    <div class="figure" aria-hidden="true">
+      <div class="part left-leg leg" hidden></div><div class="part right-leg leg" hidden></div>
+      <div class="part torso" hidden></div><div class="part head" hidden></div>
+      <div class="part left-arm arm" hidden></div><div class="part right-arm arm" hidden></div>
+      <div class="mystery" id="object">?</div><div class="hand left"></div><div class="hand right"></div>
+    </div>
+  </div>
+  <div>
+    <h2>First clue</h2>
+    <p id="clue"></p>
+    <p id="hint" hidden></p>
+    <div id="word" class="word" role="img"></div>
+    <form id="guess-form">
+      <label for="guess">Guess the whole object</label>
+      <input id="guess" type="text" autocomplete="off" spellcheck="false" maxlength="70" required>
+      <button class="primary" id="submit" type="submit">Guess</button>
+    </form>
+    <p id="status" role="status"></p>
+    <div class="actions">
+      <button id="part" type="button">Add a part for a letter</button>
+      <button id="clue-button" type="button">Another hint</button>
+      <button id="new" type="button">New object</button>
+    </div>
+    <p id="parts-count"></p>
+  </div>
+</section>
+<noscript><p>Enable JavaScript to play.</p></noscript>
+</main>
+</body>
+</html>
