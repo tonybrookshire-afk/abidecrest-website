@@ -61,6 +61,7 @@ canvas.dense-board { height:clamp(540px,72svh,760px) }
 </div>
 <canvas id="board" aria-label="Letter matching board" aria-describedby="status">Letter Trails requires a browser with canvas support.</canvas>
 <p id="status" role="status"></p>
+<audio id="sound-player" preload="auto" hidden></audio>
 <noscript><p>Enable JavaScript to play Letter Trails.</p></noscript>
 <footer class="page-footer">
   <section aria-labelledby="stats-heading">
@@ -223,7 +224,8 @@ function makeBoard() {
     const i = Math.floor(Math.random() * (count - 1));
     [exits[i], exits[i + 1]] = [exits[i + 1], exits[i]];
   }
-  const letters = count === 7 ? "LMNOPQR" : "ABCDEFGHIJKLMNOPQRSTU";
+  const letters = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
+  shuffle(letters);
   routes = exits.map((exit, index) => ({
     exit, letter:letters[index], colorIndex:index, done:false,
     bend:(Math.random() * 2 - 1) * (challenge ? .8 : .24)
@@ -422,78 +424,74 @@ function draw() {
   ctx.globalAlpha = 1;
 }
 
-let audio = null;
+const soundRate = 24000;
+const soundPlayer = document.querySelector("#sound-player");
 const fireworkSamples = new Map();
-const playingSounds = new Set();
-let soundRevision = 0;
+let chimeUrl;
+let finaleUrl;
+let finaleKey;
 
 function soundEnabled() {
   return soundToggle.getAttribute("aria-pressed") === "true";
 }
 
-function enableAudio(play) {
-  if (!soundEnabled()) return;
-  const Audio = window.AudioContext || window.webkitAudioContext;
-  if (!Audio) return;
-  try {
-    if (!audio) audio = new Audio();
-    if (audio.state === "running") {
-      play?.();
-      return;
-    }
-    if (audio.state === "closed") return;
-    const revision = soundRevision;
-    const requestedAt = performance.now();
-    audio.resume().then(() => {
-      if (revision === soundRevision && soundEnabled() &&
-          audio.state === "running" && performance.now() - requestedAt < 1000) {
-        play?.();
-      }
-    }).catch(() => {
-      // A blocked or interrupted session can retry on the next gesture.
-    });
-  } catch {
-    // The game remains playable when audio is unavailable.
-  }
-}
-
-function playSound(source, start, length, volume, filter) {
-  const gain = audio.createGain();
-  gain.gain.setValueAtTime(.0001, start);
-  gain.gain.exponentialRampToValueAtTime(volume, start + .012);
-  gain.gain.exponentialRampToValueAtTime(.0001, start + length);
-  if (filter) {
-    source.connect(filter);
-    filter.connect(gain);
-  } else {
-    source.connect(gain);
-  }
-  gain.connect(audio.destination);
-  playingSounds.add(source);
-  source.onended = () => {
-    playingSounds.delete(source);
-    source.disconnect();
-    filter?.disconnect();
-    gain.disconnect();
-  };
-  source.start(start);
-  source.stop(start + length);
-}
-
 function stopSounds() {
-  soundRevision++;
-  if (!audio) return;
-  for (const source of playingSounds) source.stop(audio.currentTime);
-  playingSounds.clear();
+  soundPlayer.pause();
+}
+
+function waveUrl(samples) {
+  const bytes = new ArrayBuffer(44 + samples.length * 2);
+  const header = new DataView(bytes);
+  const writeTag = (offset, tag) => {
+    for (let i = 0; i < tag.length; i++) header.setUint8(offset + i, tag.charCodeAt(i));
+  };
+  writeTag(0, "RIFF");
+  header.setUint32(4, bytes.byteLength - 8, true);
+  writeTag(8, "WAVE");
+  writeTag(12, "fmt ");
+  header.setUint32(16, 16, true);
+  header.setUint16(20, 1, true);
+  header.setUint16(22, 1, true);
+  header.setUint32(24, soundRate, true);
+  header.setUint32(28, soundRate * 2, true);
+  header.setUint16(32, 2, true);
+  header.setUint16(34, 16, true);
+  writeTag(36, "data");
+  header.setUint32(40, samples.length * 2, true);
+  for (let i = 0; i < samples.length; i++) {
+    const sample = Math.max(-1, Math.min(1, samples[i]));
+    header.setInt16(44 + i * 2, Math.round(sample * 32767), true);
+  }
+  return URL.createObjectURL(new Blob([bytes], { type:"audio/wav" }));
+}
+
+function playEffect(url) {
+  if (soundPlayer.getAttribute("src") !== url) soundPlayer.src = url;
+  else soundPlayer.currentTime = 0;
+  soundPlayer.play().catch(() => {
+    // If playback is interrupted, the next match can start it again.
+  });
+}
+
+function mixChime(samples) {
+  [660, 880].forEach((frequency, index) => {
+    const start = Math.round(index * .065 * soundRate);
+    for (let i = 0; i < Math.round(.18 * soundRate); i++) {
+      const time = i / soundRate;
+      const envelope = Math.min(1, time / .012) * (1 - time / .18) ** 3;
+      samples[start + i] += .085 * Math.sin(2 * Math.PI * frequency * time) * envelope;
+    }
+  });
 }
 
 function matchChime() {
-  if (!soundEnabled() || audio?.state !== "running") return;
-  [660, 880].forEach((frequency, index) => {
-    const note = audio.createOscillator();
-    note.frequency.value = frequency;
-    playSound(note, audio.currentTime + index * .065, .18, .085);
-  });
+  if (!soundEnabled()) return;
+  if (!chimeUrl) {
+    const samples = new Float32Array(Math.round(.25 * soundRate));
+    mixChime(samples);
+    chimeUrl = waveUrl(samples);
+  }
+  playEffect(chimeUrl);
 }
 
 function renderFirework(sampleRate, variant, large) {
@@ -568,43 +566,41 @@ function renderFirework(sampleRate, variant, large) {
   return sample;
 }
 
-function fireworkSounds(bursts, startAt) {
-  if (!soundEnabled() || audio?.state !== "running") return;
-  const start = audio.currentTime + (startAt - performance.now()) / 1000;
+function fireworkSounds(bursts) {
+  if (!soundEnabled()) return;
   const difficulty = level.value;
-  const gain = { Easy:.43, Normal:.50, Challenge:.57 }[difficulty];
-  for (const [index, burst] of bursts.entries()) {
-    const burstTime = start + burst.delay / 1000;
-    if (burstTime < audio.currentTime - .1) continue;
-    const large = difficulty === "Challenge" && index === bursts.length - 1;
-    const variant = index % 3;
-    const key = large ? "finale" : variant;
-    if (!fireworkSamples.has(key)) {
-      const sample = renderFirework(audio.sampleRate, variant, large);
-      const buffer = audio.createBuffer(1, sample.length, audio.sampleRate);
-      buffer.getChannelData(0).set(sample);
-      fireworkSamples.set(key, buffer);
+  const key = difficulty + ":" + bursts.length;
+  if (key !== finaleKey) {
+    const finalDelay = bursts[bursts.length - 1].delay / 1000;
+    const samples = new Float32Array(Math.ceil((.22 + finalDelay + 1.7) * soundRate));
+    mixChime(samples);
+    const gain = { Easy:.43, Normal:.50, Challenge:.57 }[difficulty];
+    for (const [index, burst] of bursts.entries()) {
+      const large = difficulty === "Challenge" && index === bursts.length - 1;
+      const variant = index % 3;
+      const sampleKey = large ? "finale-" + variant : variant;
+      if (!fireworkSamples.has(sampleKey)) {
+        fireworkSamples.set(sampleKey, renderFirework(soundRate, variant, large));
+      }
+      const effect = fireworkSamples.get(sampleKey);
+      const start = Math.round((.22 + burst.delay / 1000) * soundRate);
+      const volume = large ? .75 : gain;
+      for (let i = 0; i < effect.length && start + i < samples.length; i++) {
+        samples[start + i] += effect[i] * volume;
+      }
     }
-    const source = audio.createBufferSource();
-    source.buffer = fireworkSamples.get(key);
-    const volume = audio.createGain();
-    volume.gain.value = large ? .75 : gain;
-    source.connect(volume);
-    volume.connect(audio.destination);
-    playingSounds.add(source);
-    source.onended = () => {
-      playingSounds.delete(source);
-      source.disconnect();
-      volume.disconnect();
-    };
-    source.start(Math.max(audio.currentTime, burstTime));
+    const previous = finaleUrl;
+    finaleUrl = waveUrl(samples);
+    finaleKey = key;
+    if (previous) URL.revokeObjectURL(previous);
   }
+  playEffect(finaleUrl);
 }
 
 soundToggle.addEventListener("click", () => {
   const enabled = !soundEnabled();
   soundToggle.setAttribute("aria-pressed", String(enabled));
-  if (enabled) enableAudio(matchChime);
+  if (enabled) matchChime();
   else stopSounds();
 });
 
@@ -641,9 +637,8 @@ function celebrate() {
     last.particles *= 2;
     last.delay += 300;
   }
-  const soundStart = performance.now() + 220;
-  const start = reduced ? performance.now() : soundStart;
-  enableAudio(() => fireworkSounds(starts, soundStart));
+  fireworkSounds(starts);
+  const start = performance.now() + (reduced ? 0 : 220);
 
   function animate(now) {
     sparks = [];
@@ -708,7 +703,6 @@ board.addEventListener("pointerdown", event => {
   const tile = tiles.find(item => !item.route.done && distance(point, item.point) <= tileRadius() + 2);
   if (!tile) return;
   board.setPointerCapture(event.pointerId);
-  if (event.pointerType === "mouse") enableAudio();
   startClock();
   if (!boardStarted) {
     boardStarted = true;
@@ -731,7 +725,6 @@ board.addEventListener("pointerup", event => {
   const target = findTarget(position(event));
   if (target === tile.route && !target.done) {
     target.done = true;
-    enableAudio(matchChime);
     recordStat("matches");
     const done = routes.filter(route => route.done).length;
     status.textContent = done === routes.length ? "Board complete! You matched every letter."
@@ -739,6 +732,8 @@ board.addEventListener("pointerup", event => {
     if (done === routes.length) {
       stopClock();
       celebrate();
+    } else {
+      matchChime();
     }
   } else if (target) {
     status.textContent = "Try another line for " + tile.route.letter.toLowerCase() + ".";
