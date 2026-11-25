@@ -221,8 +221,16 @@ function makeBoard() {
     shuffle(exits);
     if (exits.every((exit, i) => exit === i)) exits.push(exits.shift());
   } else if (difficulty === "Normal") {
-    const i = Math.floor(Math.random() * (count - 1));
-    [exits[i], exits[i + 1]] = [exits[i + 1], exits[i]];
+    for (let start = 0; start < count;) {
+      const remaining = count - start;
+      const size = remaining === 3 || (remaining >= 5 && Math.random() < .5) ? 3 : 2;
+      const shift = size === 3 && Math.random() < .5 ? 2 : 1;
+      // Rotate nearby exits so each trail crosses at least one other trail.
+      for (let offset = 0; offset < size; offset++) {
+        exits[start + offset] = start + (offset + shift) % size;
+      }
+      start += size;
+    }
   }
   const letters = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
   shuffle(letters);
