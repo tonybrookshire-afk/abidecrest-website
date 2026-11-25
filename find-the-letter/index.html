@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Hear a letter and tap its match in this simple alphabet game for toddlers.">
+<meta name="theme-color" content="#fff6e9">
+<title>Find the Letter | AbideCrest Media</title>
+<style>
+* { box-sizing:border-box }
+:root { color-scheme:light; --ink:#262958; --paper:#fff6e9; --plum:#4938a1 }
+body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.45 system-ui,sans-serif }
+main { width:min(100% - 32px, 44rem); margin:auto; padding:18px 0 28px }
+a { color:#443c88; font-weight:700; display:inline-flex; align-items:center; min-height:44px }
+h1 { font-size:clamp(2.45rem,8.5vw,4.6rem); line-height:1.02; letter-spacing:-.05em; margin:.2em 0 .25em }
+.intro { font-size:clamp(1rem,3vw,1.25rem); margin:0 0 16px }
+.game { border-radius:24px; padding:clamp(14px,4vw,28px); background:#fffdfa; border:1px solid #e6dccf }
+.controls { display:flex; gap:8px; flex-wrap:wrap; align-items:center }
+button { min-height:46px; border-radius:13px; border:2px solid transparent; cursor:pointer; font:inherit; font-weight:760; color:inherit; touch-action:manipulation }
+#hear, #next { padding:9px 16px; background:var(--plum); color:white }
+#hear { min-height:54px; font-size:1.15rem }
+#show { padding:8px 12px; background:transparent; color:#443c88; text-decoration:underline }
+button:focus-visible, a:focus-visible { outline:3px solid #294cbb; outline-offset:3px }
+[hidden] { display:none!important }
+#prompt { margin:9px 0 0; font-size:1.2rem; font-weight:750 }
+.tiles { display:grid; grid-template-columns:1fr 1fr; gap:clamp(8px,3vw,18px); margin:16px 0 0 }
+.letter { border-radius:20px; background:#dcecff; border-color:#709bca; min-height:clamp(98px,23vw,178px); font:800 clamp(3.75rem,19vw,7rem)/1 Arial,sans-serif }
+.letter:nth-child(2) { background:#ffe7a6; border-color:#b48a30 }
+.letter.correct { background:#c7f3cc; border-color:#26824b }
+.letter:disabled { opacity:1; cursor:default }
+.result { min-height:53px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-top:12px }
+#status { margin:0; font-size:1.05rem; font-weight:700 }
+</style>
+</head>
+<body>
+<main>
+  <a href="../">← AbideCrest Media</a>
+  <h1>Find the Letter</h1>
+  <p class="intro">Listen, then tap the letter you hear.</p>
+  <section class="game" aria-label="Find the Letter game">
+    <div class="controls">
+      <button type="button" id="hear">🔊 Hear the letter</button>
+      <button type="button" id="show">Show the letter</button>
+    </div>
+    <p id="prompt" aria-live="polite" hidden></p>
+    <div class="tiles" role="group" aria-label="Choose a letter">
+      <button type="button" class="letter" id="first"></button>
+      <button type="button" class="letter" id="second"></button>
+    </div>
+    <div class="result">
+      <p id="status" role="status"></p>
+      <button type="button" id="next" hidden>Next letter →</button>
+    </div>
+  </section>
+  <noscript><p>Enable JavaScript to play.</p></noscript>
+</main>
+<script>
+"use strict";
+
+const alphabet = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
+const letters = [document.querySelector("#first"), document.querySelector("#second")];
+const hear = document.querySelector("#hear");
+const show = document.querySelector("#show");
+const prompt = document.querySelector("#prompt");
+const status = document.querySelector("#status");
+const next = document.querySelector("#next");
+const speech = window.speechSynthesis;
+const Utterance = window.SpeechSynthesisUtterance;
+const intro = document.querySelector(".intro");
+const hasSpeech = Boolean(speech && Utterance);
+let deck = [];
+let target = "";
+let answered = false;
+let visiblePrompt = !hasSpeech;
+let spokenPrompt = null;
+
+function nextTarget() {
+  if (!deck.length) {
+    deck = alphabet.slice();
+    for (let i = deck.length - 1; i > 0; i--) {
+      const index = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[index]] = [deck[index], deck[i]];
+    }
+    if (deck.at(-1) === target) deck.unshift(deck.pop());
+  }
+  return deck.pop();
+}
+
+function speakLetter() {
+  if (!hasSpeech) return;
+  try {
+    speech.cancel();
+    const speechLine = "Find the letter " + target + ".";
+    const utterance = new Utterance(speechLine);
+    spokenPrompt = utterance;
+    utterance.lang = "en-US";
+    utterance.rate = .82;
+    utterance.onerror = event => {
+      if (event.error !== "canceled" && event.error !== "interrupted" && spokenPrompt === utterance) {
+        visiblePrompt = true;
+        showPrompt();
+      }
+    };
+    speech.speak(utterance);
+  } catch {
+    visiblePrompt = true;
+    showPrompt();
+  }
+}
+
+function showPrompt() {
+  prompt.textContent = "Find " + target;
+  prompt.hidden = !visiblePrompt;
+  show.hidden = !hasSpeech;
+  show.textContent = visiblePrompt ? "Hide the letter" : "Show the letter";
+  show.setAttribute("aria-expanded", String(visiblePrompt));
+}
+
+function newRound() {
+  answered = false;
+  target = nextTarget();
+  const distractors = alphabet.filter(letter => letter !== target);
+  const secondLetter = distractors[Math.floor(Math.random() * distractors.length)];
+  const choices = Math.random() < .5 ? [target, secondLetter] : [secondLetter, target];
+  for (const [index, button] of letters.entries()) {
+    button.textContent = choices[index];
+    button.disabled = false;
+    button.classList.remove("correct");
+  }
+  next.hidden = true;
+  status.textContent = "";
+  showPrompt();
+}
+
+for (const button of letters) {
+  button.addEventListener("click", () => {
+    if (answered) return;
+    if (button.textContent !== target) {
+      status.textContent = "Try the other letter.";
+      return;
+    }
+    answered = true;
+    button.classList.add("correct");
+    status.textContent = "You found " + target + "! ⭐";
+    next.hidden = false;
+    next.focus({preventScroll:true});
+    for (const choice of letters) choice.disabled = true;
+  });
+}
+
+hear.hidden = !hasSpeech;
+if (!hasSpeech) intro.textContent = "Tap the letter that matches.";
+hear.addEventListener("click", speakLetter);
+show.addEventListener("click", () => {
+  visiblePrompt = !visiblePrompt;
+  showPrompt();
+});
+next.addEventListener("click", () => {
+  newRound();
+  (hasSpeech ? hear : letters[0]).focus({preventScroll:true});
+  speakLetter();
+});
+newRound();
+</script>
+</body>
+</html>
