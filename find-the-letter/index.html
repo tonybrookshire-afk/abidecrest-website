@@ -16,16 +16,28 @@ h1 { font-size:clamp(2.45rem,8.5vw,4.6rem); line-height:1.02; letter-spacing:-.0
 .intro { font-size:clamp(1rem,3vw,1.25rem); margin:0 0 16px }
 .game { border-radius:24px; padding:clamp(14px,4vw,28px); background:#fffdfa; border:1px solid #e6dccf }
 .controls { display:flex; gap:8px; flex-wrap:wrap; align-items:center }
+.difficulty { display:flex; align-items:center; gap:8px; margin:0 0 12px; font-weight:700 }
+.difficulty select { min-height:44px; padding:6px 10px; border:1px solid #8d82b6; border-radius:10px; font:inherit; color:inherit; background:white }
+.stats { margin:14px 0 0; border:1px solid #e6dccf; border-radius:18px; background:#fffdfa; padding:14px 18px }
+.stats h2 { font-size:1rem; margin:0 0 8px }
+.stats dl { display:flex; flex-wrap:wrap; gap:8px 24px; margin:0 }
+.stats dd { margin:2px 0 0; font-weight:760; font-variant-numeric:tabular-nums }
+.stats p { margin:8px 0 0; font-size:.9rem }
 button { min-height:46px; border-radius:13px; border:2px solid transparent; cursor:pointer; font:inherit; font-weight:760; color:inherit; touch-action:manipulation }
 #hear, #next { padding:9px 16px; background:var(--plum); color:white }
 #hear { min-height:54px; font-size:1.15rem }
 #show { padding:8px 12px; background:transparent; color:#443c88; text-decoration:underline }
-button:focus-visible, a:focus-visible { outline:3px solid #294cbb; outline-offset:3px }
+button:focus-visible, select:focus-visible, a:focus-visible { outline:3px solid #294cbb; outline-offset:3px }
 [hidden] { display:none!important }
 #prompt { margin:9px 0 0; font-size:1.2rem; font-weight:750 }
 .tiles { display:grid; grid-template-columns:1fr 1fr; gap:clamp(8px,3vw,18px); margin:16px 0 0 }
 .letter { border-radius:20px; background:#dcecff; border-color:#709bca; min-height:clamp(98px,23vw,178px); font:800 clamp(3.75rem,19vw,7rem)/1 Arial,sans-serif }
+.tiles[data-count="3"] { grid-template-columns:repeat(3,minmax(0,1fr)) }
+.tiles[data-count="3"] .letter { font-size:clamp(2.6rem,14vw,5.8rem); padding-inline:0 }
+.tiles[data-count="4"] .letter { min-height:clamp(86px,18vw,132px); font-size:clamp(2.8rem,14vw,5.6rem) }
 .letter:nth-child(2) { background:#ffe7a6; border-color:#b48a30 }
+.letter:nth-child(3) { background:#f0e6ff; border-color:#9172b8 }
+.letter:nth-child(4) { background:#ffe3ec; border-color:#be7290 }
 .letter.correct { background:#c7f3cc; border-color:#26824b }
 .letter:disabled { opacity:1; cursor:default }
 .result { min-height:53px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-top:12px }
@@ -38,20 +50,34 @@ button:focus-visible, a:focus-visible { outline:3px solid #294cbb; outline-offse
   <h1>Find the Letter</h1>
   <p class="intro">Listen, then tap the letter you hear.</p>
   <section class="game" aria-label="Find the Letter game">
+    <label class="difficulty">Difficulty
+      <select id="difficulty"><option value="easy">Easy</option><option value="normal">Normal</option></select>
+    </label>
     <div class="controls">
       <button type="button" id="hear">🔊 Hear the letter</button>
       <button type="button" id="show">Show the letter</button>
     </div>
     <p id="prompt" aria-live="polite" hidden></p>
     <audio id="letter-audio" preload="auto" hidden></audio>
-    <div class="tiles" role="group" aria-label="Choose a letter">
+    <div class="tiles" id="tiles" role="group" aria-label="Choose a letter">
       <button type="button" class="letter" id="first"></button>
       <button type="button" class="letter" id="second"></button>
+      <button type="button" class="letter" id="third" hidden></button>
+      <button type="button" class="letter" id="fourth" hidden></button>
     </div>
     <div class="result">
       <p id="status" role="status"></p>
       <button type="button" id="next" hidden>Next letter →</button>
     </div>
+  </section>
+  <section class="stats" aria-labelledby="stats-heading">
+    <h2 id="stats-heading">Your play stats</h2>
+    <dl>
+      <div><dt>Page views</dt><dd id="view-count">0</dd></div>
+      <div><dt>Games played</dt><dd id="game-count">0</dd></div>
+      <div><dt>Letters matched</dt><dd id="match-count">0</dd></div>
+    </dl>
+    <p id="stats-note">Saved in this browser. Switching difficulty starts a new game when you make a choice.</p>
   </section>
   <noscript><p>Enable JavaScript to play.</p></noscript>
 </main>
@@ -59,7 +85,22 @@ button:focus-visible, a:focus-visible { outline:3px solid #294cbb; outline-offse
 "use strict";
 
 const alphabet = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
-const letters = [document.querySelector("#first"), document.querySelector("#second")];
+const tiles = document.querySelector("#tiles");
+const letters = [...tiles.querySelectorAll(".letter")];
+const difficulty = document.querySelector("#difficulty");
+const statsFields = {
+  views: document.querySelector("#view-count"),
+  games: document.querySelector("#game-count"),
+  matches: document.querySelector("#match-count")
+};
+const statsKey = "abidecrest.find-the-letter.stats.v1";
+const stats = {views:0, games:0, matches:0};
+const numberFormat = new Intl.NumberFormat();
+const fourChoiceThreshold = 5;
+let keepStats = true;
+let gameStarted = false;
+let firstTryMatches = 0;
+let hadWrongChoice = false;
 const hear = document.querySelector("#hear");
 const show = document.querySelector("#show");
 const prompt = document.querySelector("#prompt");
@@ -72,13 +113,48 @@ let answered = false;
 let visiblePrompt = false;
 let requestId = 0;
 
+function showStats() {
+  for (const key of Object.keys(stats)) statsFields[key].textContent = numberFormat.format(stats[key]);
+  if (!keepStats) document.querySelector("#stats-note").textContent = "Saved for this visit.";
+}
+
+function loadStats(raw) {
+  const saved = JSON.parse(raw) || {};
+  for (const key of Object.keys(stats)) {
+    stats[key] = Number.isSafeInteger(saved[key]) && saved[key] >= 0 ? saved[key] : 0;
+  }
+}
+
+function countStat(key) {
+  if (keepStats) {
+    try {
+      loadStats(localStorage.getItem(statsKey));
+    } catch {
+      keepStats = false;
+    }
+  }
+  stats[key]++;
+  if (keepStats) {
+    try {
+      localStorage.setItem(statsKey, JSON.stringify(stats));
+    } catch {
+      keepStats = false;
+    }
+  }
+  showStats();
+}
+
+function shuffle(items) {
+  for (let i = items.length - 1; i > 0; i--) {
+    const index = Math.floor(Math.random() * (i + 1));
+    [items[i], items[index]] = [items[index], items[i]];
+  }
+  return items;
+}
+
 function nextTarget() {
   if (!deck.length) {
-    deck = alphabet.slice();
-    for (let i = deck.length - 1; i > 0; i--) {
-      const index = Math.floor(Math.random() * (i + 1));
-      [deck[i], deck[index]] = [deck[index], deck[i]];
-    }
+    deck = shuffle(alphabet.slice());
     if (deck.at(-1) === target) deck.unshift(deck.pop());
   }
   return deck.pop();
@@ -104,15 +180,18 @@ function showPrompt() {
 
 function newRound() {
   answered = false;
+  hadWrongChoice = false;
   target = nextTarget();
   requestId++;
   audio.src = "audio/" + target.toLowerCase() + ".mp3";
-  const distractors = alphabet.filter(letter => letter !== target);
-  const secondLetter = distractors[Math.floor(Math.random() * distractors.length)];
-  const choices = Math.random() < .5 ? [target, secondLetter] : [secondLetter, target];
+  const count = difficulty.value === "easy" ? 2 : firstTryMatches >= fourChoiceThreshold ? 4 : 3;
+  const distractors = shuffle(alphabet.filter(letter => letter !== target));
+  const choices = shuffle([target, ...distractors.slice(0, count - 1)]);
+  tiles.dataset.count = count;
   for (const [index, button] of letters.entries()) {
-    button.textContent = choices[index];
-    button.disabled = false;
+    button.textContent = choices[index] || "";
+    button.hidden = index >= count;
+    button.disabled = button.hidden;
     button.classList.remove("correct");
   }
   next.hidden = true;
@@ -122,12 +201,19 @@ function newRound() {
 
 for (const button of letters) {
   button.addEventListener("click", () => {
-    if (answered) return;
+    if (answered || button.hidden) return;
+    if (!gameStarted) {
+      gameStarted = true;
+      countStat("games");
+    }
     if (button.textContent !== target) {
-      status.textContent = "Try the other letter.";
+      hadWrongChoice = true;
+      status.textContent = tiles.dataset.count === "2" ? "Try the other letter." : "Try another letter.";
       return;
     }
     answered = true;
+    if (difficulty.value === "normal" && !hadWrongChoice) firstTryMatches++;
+    countStat("matches");
     button.classList.add("correct");
     status.textContent = "You found " + target + "! ⭐";
     next.hidden = false;
@@ -136,6 +222,11 @@ for (const button of letters) {
   });
 }
 
+difficulty.addEventListener("change", () => {
+  gameStarted = false;
+  firstTryMatches = 0;
+  newRound();
+});
 hear.addEventListener("click", playLetter);
 show.addEventListener("click", () => {
   visiblePrompt = !visiblePrompt;
@@ -146,6 +237,7 @@ next.addEventListener("click", () => {
   hear.focus({preventScroll:true});
   playLetter();
 });
+countStat("views");
 newRound();
 </script>
 </body>
