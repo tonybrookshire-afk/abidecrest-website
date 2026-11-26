@@ -21,6 +21,15 @@ let remainingLetters;
 let revealedLetters;
 let partCount;
 let finished;
+const progress = document.querySelector("#parts-progress");
+const progressCaption = document.querySelector("#progress-caption");
+const result = document.querySelector("#round-result");
+const resultTitle = document.querySelector("#result-title");
+const resultAnswer = document.querySelector("#result-answer");
+const resultDetail = document.querySelector("#result-detail");
+const encouragement = document.querySelector("#encouragement");
+function updateProgress(){ const available=parts.length-partCount; partsCount.textContent=available+" of "+parts.length+" parts remaining"; progress.value=partCount; progressCaption.textContent=partCount+" of "+parts.length+" parts revealed"; }
+function encourage(message){encouragement.textContent="Shell says: "+message;}
 
 function shuffled(items) {
   const result = [...items];
@@ -77,7 +86,7 @@ function startRound() {
   guess.value = "";
   guess.disabled = submit.disabled = hintButton.disabled = partButton.disabled = false;
   status.textContent = "";
-  partsCount.textContent = parts.length + " letters available";
+  result.hidden = true; result.classList.remove("win"); newButton.textContent = "New object"; updateProgress(); encourage("Let’s solve a mystery!");
   showWord();
 }
 
@@ -87,8 +96,18 @@ function endRound(correct) {
   object.textContent = puzzle.icon;
   object.classList.add("revealed");
   scene.setAttribute("aria-label", "Mystery object revealed: " + puzzle.answer);
-  status.textContent = correct ? "You got it! It was " + puzzle.answer + "."
-    : "The object was " + puzzle.answer + ". Try a new one!";
+  const unused = parts.length - partCount;
+  status.textContent = "";
+  resultTitle.textContent = correct ? "Great job! Mystery solved! ⭐" : "Game over — nice try!";
+  resultAnswer.textContent = puzzle.icon + " " + puzzle.answer.toUpperCase();
+  resultDetail.textContent = correct ? "You solved it with " + unused + (unused === 1 ? " part" : " parts") + " remaining!" : "You revealed all six parts. Let’s try another object!";
+  result.classList.toggle("win", correct); result.hidden = false;
+  newButton.textContent = "Play again";
+  for (const part of parts) part.hidden = false;
+  progress.value = parts.length;
+  progressCaption.textContent = "Full character revealed at end of round";
+  partsCount.textContent = unused + (unused === 1 ? " part" : " parts") + " unused at finish";
+  encourage(correct ? "Wonderful work! You solved it!" : "Great effort! Every guess helps us learn.");
   showWord();
   newButton.focus({preventScroll:true});
 }
@@ -96,10 +115,10 @@ function endRound(correct) {
 partButton.addEventListener("click", () => {
   if (finished || partCount === parts.length) return;
   parts[partCount++].hidden = false;
-  revealedLetters.add(remainingLetters.pop());
+  if (remainingLetters.length) revealedLetters.add(remainingLetters.pop());
   const available = parts.length - partCount;
   partButton.disabled = !available;
-  partsCount.textContent = available ? available + (available === 1 ? " letter available" : " letters available") : "All parts added";
+  updateProgress(); encourage(available ? "Good thinking! Look at the letters and clues." : "Give it your best final guess!");
   status.textContent = available ? "One letter revealed." : hint.hidden ? "One last guess! You can still use the extra hint." : "One last guess!";
   showWord();
 });
@@ -123,7 +142,7 @@ form.addEventListener("submit", event => {
   } else if (partCount === parts.length) {
     endRound(false);
   } else {
-    status.textContent = "Try again, use the extra hint, or add a part for a letter.";
+    status.textContent = "Try again, use the extra hint, or add a part for a letter."; encourage("You can do it! Try another clue.");
     guess.select();
   }
 });
