@@ -2,8 +2,8 @@
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Polarity Rush · Hairpin Trial</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#080e20;color:#fff;font:16px system-ui,sans-serif}main{position:relative;height:100vh;height:100dvh;min-height:300px;overflow:hidden;isolation:isolate}canvas{position:absolute;inset:0;width:100%;height:100%;z-index:-2}header,footer{position:absolute;left:4%;right:4%;display:flex;align-items:center;justify-content:space-between;gap:12px}header{top:max(14px,env(safe-area-inset-top));text-shadow:0 2px 5px #000;font-weight:800;letter-spacing:.12em;font-size:12px}#clock{font: bold 20px monospace}.panel{position:absolute;top:40%;left:6%;transform:translateY(-50%);padding:22px;background:#081124ed;border-left:4px solid #5affe8;max-width:min(390px,88vw)}h1{font:bold italic clamp(36px,6vw,74px)/.94 system-ui;margin:0;letter-spacing:-.065em}p{line-height:1.4;color:#d3e7f3;margin:12px 0}button{font:800 15px system-ui;color:white;background:#14233c;border:1px solid #7a96ad;border-radius:9px;padding:12px 20px;touch-action:none;user-select:none;-webkit-user-select:none}button:focus-visible{outline:3px solid white}#start,#rail{background:#7afcde;color:#08231f;border-color:#7afcde}footer{bottom:max(16px,env(safe-area-inset-bottom))}#cue{position:absolute;top:18%;width:100%;text-align:center;font-weight:900;text-shadow:0 2px 6px #000}#progress{position:absolute;top:0;width:100%;height:4px;background:#334253}#bar{height:100%;background:#68ffda;width:0}[hidden]{display:none!important}button.held{filter:brightness(1.45)}@media(max-height:480px){.panel{top:49%;padding:14px}header{top:9px}footer{bottom:8px}}
-</style>
-<main><canvas aria-hidden="true"></canvas><div id="progress"><div id="bar"></div></div><header><span>ABIDECREST / HAIRPIN TRIAL</span><span id="clock">0.00 s</span></header><div id="cue"></div><section class="panel"><h1>Polarity Rush</h1><p id="brief">Steer toward the glowing right rail. Hold MAGNET through the hairpin, then release when the rail turns gold for an exit boost.</p><button id="start">Start run</button></section><footer hidden><div><button id="left" aria-label="Steer left">◀</button> <button id="right" aria-label="Steer right">▶</button></div><button id="rail">MAGNET</button></footer></main>
+#drive{background:#ff4b95;color:#200621;border-color:#ff94bd}#drive:disabled{background:#33223c;color:#cbb6cf;border-color:#67526b}@media(max-width:500px){footer button{padding:12px 9px;font-size:12px}.panel{top:46%}}</style>
+<main><canvas aria-hidden="true"></canvas><div id="progress"><div id="bar"></div></div><header><span>ABIDECREST / HAIRPIN TRIAL</span><span id="clock">0.00 s</span></header><div id="cue"></div><section class="panel"><h1>Polarity Rush</h1><p id="brief">Steer toward the glowing right rail. Hold MAGNET through the hairpin, then release when the rail turns gold for an exit boost. Double-tap a steering arrow to dash. Tap OVERDRIVE (Shift) for extra thrust. A clean rail release refills it.</p><button id="start">Start run</button></section><footer hidden><div><button id="left" aria-label="Steer left">◀</button> <button id="right" aria-label="Steer right">▶</button></div><button id="drive">OVERDRIVE</button><button id="rail">MAGNET</button></footer></main>
 <script>
 'use strict';
 const el=id=>document.getElementById(id), canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d');
@@ -13,23 +13,36 @@ let state='ready',distance=0,lane=0,speed=0,time=0,boost=0,locked=false,used=fal
 try{best=Number(localStorage.polarityHairpinBest)||Infinity}catch{}
 const keys=new Set(),pointers=new Map();
 function held(k){return keys.has(k)||[...pointers.values()].includes(k)}
+let dashCooldown=0,dashLeft=0,dashDirection=0,driveLeft=0,charged=true;
+const lastTap={left:-10,right:-10};
+function tapSteer(id){
+ if(id!=='left'&&id!=='right')return;
+ if(!locked&&dashCooldown<=0&&time-lastTap[id]<.32){
+  dashDirection=id==='right'?1:-1;dashLeft=.18;dashCooldown=1.3;signal('Vector dash');lastTap[id]=-10;
+ }else lastTap[id]=time;
+}
+function charge(value){charged=value;el('drive').disabled=!value;el('drive').textContent=value?'OVERDRIVE':'DEPLETED'}
+function overdrive(){if(state!=='race'||!charged)return;charge(false);driveLeft=2;signal('Overdrive')}
+el('drive').onclick=overdrive;
 function signal(s){message=s;messageUntil=time+1.25}
-function detach(){if(!locked)return;locked=false;used=true;if(distance>=exit-65&&distance<=exit+3){boost=4;speed=85;signal('Clean release · Boost!')}else signal('Early release')}
-function reset(){state='race';distance=lane=speed=time=boost=messageUntil=0;locked=used=false;keys.clear();pointers.clear();panel.hidden=true;controls.hidden=false}
+function detach(){if(!locked)return;locked=false;used=true;if(distance>=exit-65&&distance<=exit+3){boost=4;speed=85;charge(true);signal('Clean release · Boost!')}else signal('Early release')}
+function reset(){state='race';dashCooldown=dashLeft=driveLeft=0;lastTap.left=lastTap.right=-10;charge(true);distance=lane=speed=time=boost=messageUntil=0;locked=used=false;keys.clear();pointers.clear();panel.hidden=true;controls.hidden=false}
 function end(){state='done';controls.hidden=true;panel.hidden=false;el('cue').textContent='';let prior=best;best=Math.min(best,time);try{localStorage.polarityHairpinBest=best}catch{}
 document.querySelector('h1').textContent=time.toFixed(2)+' s';el('brief').textContent=(time<prior?'Personal best. ':'')+'Best run: '+best.toFixed(2)+' s.';el('start').textContent='Race again'}
 el('start').onclick=reset;
 const bindings={ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',Space:'rail'};
 function release(k){if(k==='rail'&&!held(k))detach()}
-onkeydown=e=>{if(state==='race'&&bindings[e.code]){e.preventDefault();keys.add(bindings[e.code])}};
+onkeydown=e=>{if(state==='race'&&e.key==='Shift'&&!e.repeat)overdrive();if(state==='race'&&bindings[e.code]){e.preventDefault();if(!e.repeat)tapSteer(bindings[e.code]);keys.add(bindings[e.code])}};
 onkeyup=e=>{const k=bindings[e.code];keys.delete(k);release(k)};
-for(const id of ['left','right','rail']){const b=el(id);b.onpointerdown=e=>{b.setPointerCapture(e.pointerId);pointers.set(e.pointerId,id)};b.onlostpointercapture=e=>{pointers.delete(e.pointerId);release(id)}}
+for(const id of ['left','right','rail']){const b=el(id);b.onpointerdown=e=>{tapSteer(id);b.setPointerCapture(e.pointerId);pointers.set(e.pointerId,id)};b.onlostpointercapture=e=>{pointers.delete(e.pointerId);release(id)}}
 onblur=()=>{keys.clear();pointers.clear();detach()};document.addEventListener('visibilitychange',()=>{previous=0});
 function step(dt){time+=dt;const curve=distance>=entry&&distance<exit;
 if(!used&&held('rail')&&lane>.18&&distance>entry-55&&distance<exit-65)locked=true;
 if(locked){lane+=(.72-lane)*Math.min(1,dt*6);if(distance>exit+3){locked=false;used=true;signal('Late release')}}else lane+=(Number(held('right'))-Number(held('left'))-(curve?.36:0))*dt*1.32;
+if(!locked&&dashLeft>0)lane+=dashDirection*2.7*Math.min(dt,dashLeft);
+dashLeft=Math.max(0,dashLeft-dt);dashCooldown=Math.max(0,dashCooldown-dt);driveLeft=Math.max(0,driveLeft-dt);
 const wall=Math.abs(lane)>=1;lane=Math.max(-1,Math.min(1,lane));boost=Math.max(0,boost-dt);
-const target=wall?28:boost?85:locked?65:54;speed+=(target-speed)*Math.min(1,dt*(wall?5:1.1));distance+=speed*dt;
+const target=wall?28:driveLeft?104:boost?85:locked?65:54;speed+=(target-speed)*Math.min(1,dt*(wall?5:driveLeft?4:1.1));distance+=speed*dt;
 el('cue').textContent=time<messageUntil?message:locked?(distance>=exit-65?'Release now!':'Magnet locked'):wall?'Wall scrape':distance>entry-145&&distance<entry+70?'Right rail · Hold magnet':'';
 el('clock').textContent=time.toFixed(2)+' s';el('bar').style.width=Math.min(100,100*distance/finish)+'%';
 if(distance>=finish)end()}
@@ -37,15 +50,16 @@ function path(s){const a=Math.max(0,Math.min(Math.PI,(s-entry)/radius));return {
 function poly(points,color){ctx.fillStyle=color;ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fill()}
 function draw(){const w=canvas.clientWidth,h=canvas.clientHeight,dpr=Math.min(devicePixelRatio,2);
 if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr)}ctx.setTransform(dpr,0,0,dpr,0,0);
-const horizon=h*.37,g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#110e38');g.addColorStop(.38,'#df859f');g.addColorStop(.39,'#413a69');g.addColorStop(1,'#0c1730');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+const horizon=h*.37,g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#110e38');const sector=Math.min(1,distance/exit);g.addColorStop(.22,'hsl('+ (277-sector*90) +' 85% 40%)');g.addColorStop(.38,'hsl('+ (325-sector*145) +' 98% 66%)');g.addColorStop(.39,'#413a69');g.addColorStop(1,'#0c1730');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
 const p=path(distance),sin=Math.sin(p.a),cos=Math.cos(p.a),f=Math.min(w*.74,h*1.25);
-const sunX=w*(.72-.44*p.a/Math.PI);ctx.fillStyle='#ffe5b2';ctx.beginPath();ctx.arc(sunX,horizon*.8,h*.10,0,7);ctx.fill();
+const sunX=w*(.72-.44*p.a/Math.PI);ctx.fillStyle='#ffdd70';ctx.beginPath();ctx.arc(sunX,horizon*.8,h*.10,0,7);ctx.fill();
 let peaks=[[0,horizon+12]];for(let x=0;x<=w+8;x+=8){let a=x/w*12+p.a;peaks.push([x,horizon-h*(.035+.05*Math.abs(Math.sin(a*2)+.6*Math.sin(a*5)))])}peaks.push([w+8,horizon+12]);poly(peaks,'#30264e');
 function project(s,l){const q=path(s),dx=q.x+l*Math.cos(q.a)-p.x-lane*11*cos,dz=q.z-l*Math.sin(q.a)-p.z+lane*11*sin,z=dx*sin+dz*cos+18;if(z<3)return null;return [w/2+(dx*cos-dz*sin)*f/z,horizon+9*f/z]}
 for(let s=Math.floor((distance+420)/5)*5;s>distance-16;s-=5){function strip(l,r,c){let pts=[project(s,l),project(s,r),project(s-5,r),project(s-5,l)];if(pts.every(Boolean))poly(pts,c)}
-strip(-14,14,Math.floor(s/20)%2?'#25304b':'#27334e');strip(-14,-13.4,'#ee7baa');strip(13.3,14,s>=entry-55&&s<=exit?(s>=exit-65?'#ffd465':'#55ffdd'):'#ee7baa');if(s%25===0)strip(-.12,.12,'#92a8ba');if(Math.abs(s-finish)<3)strip(-14,14,'#e7fbff')}
+strip(-15.4,-14,'#742b97');strip(14,15.4,'#48299b');strip(-14,14,Math.floor(s/20)%2?'#21204e':'#232651');strip(-14,-13.4,'#ff42ae');strip(13.3,14,s>=entry-55&&s<=exit?(s>=exit-65?'#ffd465':'#55ffdd'):'#ff42ae');if(s%25===0)strip(-.12,.12,'#92a8ba');if(Math.abs(s-finish)<3)strip(-14,14,'#e7fbff')}
 const x=w/2,y=Math.min(h*.82,horizon+9*f/18),size=Math.min(w*.095,h*.14);function ship(points,color){poly(points.map(([a,b])=>[x+a*size,y+b*size]),color)}
-ship([[-.34,.23],[0,boost?1.28:.82],[.34,.23]],boost?'#ffe179':'#5bffe4');ship([[-1,.35],[-.78,-.24],[-.28,-.10],[0,-.9],[.28,-.10],[.78,-.24],[1,.35],[.3,.23],[0,.39],[-.3,.23]],'#dee6f2');ship([[-.32,.20],[0,-.72],[.32,.20],[0,.34]],'#cf426b');ship([[-.16,-.09],[0,-.48],[.16,-.09]],'#162945');
+if(dashLeft>0)ship([[-dashDirection*1.8,.28],[0,-.3],[0,.36]],'#91faff');
+ship([[-.34,.23],[0,driveLeft?1.8:boost?1.28:.82],[.34,.23]],driveLeft?'#ff479e':boost?'#ffe179':'#5bffe4');ship([[-1,.35],[-.78,-.24],[-.28,-.10],[0,-.9],[.28,-.10],[.78,-.24],[1,.35],[.3,.23],[0,.39],[-.3,.23]],'#dee6f2');ship([[-.32,.20],[0,-.72],[.32,.20],[0,.34]],'#cf426b');ship([[-.16,-.09],[0,-.48],[.16,-.09]],'#162945');
 for(const id of ['left','right','rail'])el(id).classList.toggle('held',held(id))}
 function frame(now){if(state==='race'&&previous&&!document.hidden)step(Math.min(.05,(now-previous)/1000));previous=now;draw();requestAnimationFrame(frame)}requestAnimationFrame(frame);
 </script></html>
