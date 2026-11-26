@@ -62,6 +62,14 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline:3px solid 
 .character-barnaby { --sheet-width:338%; --crop-top:0%; --crop-left:-33% }
 .character-rascal { --sheet-width:327%; --crop-top:-64%; --crop-left:-180% }
 .character-list figcaption { margin-top:4px }
+
+.character-list button{display:flex;flex-direction:column;align-items:center;gap:5px;background:#fff6e9;padding:8px 12px;border:2px solid transparent;border-radius:16px;min-width:88px}
+.character-list button[aria-pressed="true"]{background:#e5ddff;border-color:var(--plum)}
+.character-shell{--sheet-width:167%;--crop-top:-20%;--crop-left:0%}
+.presenter-friend{position:relative;width:100%;aspect-ratio:384/340;overflow:hidden;border-radius:20px}
+.presenter-friend img{position:absolute;max-width:none;height:auto}
+.presenter-barnaby img{width:218%;left:0;top:0}
+.presenter-rascal img{width:218%;left:-118%;top:0}
 </style>
 </head>
 <body>
@@ -94,22 +102,17 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline:3px solid 
         <button type="button" id="next" hidden>Next letter →</button>
       </div>
     </section>
-    <figure class="shell-presenter">
+    <figure class="shell-presenter" id="active-presenter">
       <div class="shell-standing"><img src="art/shell.webp" width="640" height="681" alt="Shell standing with his clipboard, wearing glasses and a green visor" decoding="async"></div>
-      <figcaption>Shell</figcaption>
+      <div class="presenter-friend" id="friend-presenter" hidden><img id="friend-presenter-image" src="art/barnaby-duo.webp" width="720" height="480" alt="" decoding="async"></div><figcaption id="presenter-name" aria-live="polite">Shell</figcaption>
     </figure>
   </div>
   <section class="character-friends" aria-labelledby="friends-heading">
     <h2 id="friends-heading">Play with our friends</h2>
-    <div class="character-list">
-      <figure>
-        <div class="character-portrait character-barnaby"><img src="art/barnaby-duo.webp" width="720" height="480" alt="Barnaby, a smiling brown bear" decoding="async"></div>
-        <figcaption>Barnaby</figcaption>
-      </figure>
-      <figure>
-        <div class="character-portrait character-rascal"><img src="art/barnaby-duo.webp" width="720" height="480" alt="Rascal, a raccoon with a red neckerchief" decoding="async"></div>
-        <figcaption>Rascal</figcaption>
-      </figure>
+    <div class="character-list" role="group" aria-label="Choose your presenter">
+      <button type="button" data-presenter="shell" aria-pressed="true"><span class="character-portrait character-shell"><img src="art/shell.webp" alt="" decoding="async"></span><span>Shell</span></button>
+      <button type="button" data-presenter="barnaby" aria-pressed="false"><span class="character-portrait character-barnaby"><img src="art/barnaby-duo.webp" alt="" decoding="async"></span><span>Barnaby</span></button>
+      <button type="button" data-presenter="rascal" aria-pressed="false"><span class="character-portrait character-rascal"><img src="art/barnaby-duo.webp" alt="" decoding="async"></span><span>Rascal</span></button>
     </div>
   </section>
   <section class="stats" aria-labelledby="stats-heading">
@@ -348,6 +351,25 @@ setInterval(() => {
   if (now - playSince >= playSaveMs || now >= lastPlayAction + playIdleMs) savePlayTime(now);
   showPlayTime(now);
 }, 1000);
+const presenterButtons = [...document.querySelectorAll("[data-presenter]")];
+const presenterKey = "abidecrest.find-the-letter.presenter.v1";
+function choosePresenter(name, save = true) {
+  if (!["shell","barnaby","rascal"].includes(name)) name = "shell";
+  const shell = document.querySelector(".shell-standing");
+  const friend = document.querySelector("#friend-presenter");
+  shell.hidden = name !== "shell";
+  friend.hidden = name === "shell";
+  friend.className = "presenter-friend presenter-" + name;
+  const label = name[0].toUpperCase() + name.slice(1);
+  document.querySelector("#friend-presenter-image").alt = label + " presenting the letter game";
+  document.querySelector("#presenter-name").textContent = label;
+  for (const button of presenterButtons) button.setAttribute("aria-pressed", String(button.dataset.presenter === name));
+  if (save) { try { localStorage.setItem(presenterKey, name); } catch {} }
+}
+for (const button of presenterButtons) button.addEventListener("click", () => choosePresenter(button.dataset.presenter));
+let savedPresenter = "shell";
+try { savedPresenter = localStorage.getItem(presenterKey) || "shell"; } catch {}
+choosePresenter(savedPresenter, false);
 countStat("views");
 newRound();
 </script>
