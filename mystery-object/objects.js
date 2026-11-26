@@ -215,5 +215,145 @@ const mysteryObjects = [
     "aliases": [
       "jigsaw"
     ]
+  },
+  {
+    "answer": "Turkey",
+    "icon": "🦃",
+    "clue": "This bird gets a lot of attention on Thanksgiving.",
+    "hint": "It fans out its tail feathers and says gobble.",
+    "aliases": [
+      "wild turkey"
+    ]
+  },
+  {
+    "answer": "Pumpkin pie",
+    "icon": "🥧",
+    "clue": "This orange dessert often gets a swirl of whipped cream.",
+    "hint": "Its filling comes from the same squash you might carve in October.",
+    "aliases": []
+  },
+  {
+    "answer": "Cranberry sauce",
+    "icon": "🥣",
+    "clue": "This tart red side dish can wobble on your Thanksgiving plate.",
+    "hint": "It is made from little red berries and sometimes slides out of a can in one piece.",
+    "aliases": []
+  },
+  {
+    "answer": "Cornucopia",
+    "icon": "🧺",
+    "clue": "This decoration looks like the harvest is spilling onto the table.",
+    "hint": "It is a horn-shaped basket filled with fruits and vegetables.",
+    "aliases": [
+      "horn of plenty"
+    ]
+  },
+  {
+    "answer": "Mashed potatoes",
+    "icon": "🥔",
+    "clue": "You can make a little lake of gravy in this fluffy side dish.",
+    "hint": "Start with boiled spuds, then squash them with butter.",
+    "aliases": []
+  },
+  {
+    "answer": "Wishbone",
+    "icon": "🦴",
+    "clue": "Two people each take one end and make a wish.",
+    "hint": "This forked turkey bone looks like the letter Y.",
+    "aliases": [
+      "turkey wishbone"
+    ]
+  },
+  {
+    "answer": "Parade balloon",
+    "icon": "🎈",
+    "clue": "Crowds look up to see this giant character float down the street.",
+    "hint": "People walking below hold ropes to guide it past the parade stands.",
+    "aliases": [
+      "giant parade balloon"
+    ]
+  },
+  {
+    "answer": "Sweet potatoes",
+    "icon": "🍠",
+    "clue": "Some families put marshmallows on top of these at Thanksgiving.",
+    "hint": "These root vegetables often have orange flesh and taste sweet when roasted.",
+    "aliases": [
+      "sweet potato"
+    ]
+  },
+  {
+    "answer": "American flag",
+    "icon": "🇺🇸",
+    "clue": "You might see this waving above a school or carried at the front of a parade.",
+    "hint": "Look for fifty white stars and thirteen red and white stripes.",
+    "aliases": [
+      "US flag",
+      "United States flag",
+      "Stars and Stripes",
+      "Old Glory"
+    ]
+  },
+  {
+    "answer": "Bald eagle",
+    "icon": "🦅",
+    "clue": "This American bird of prey can swoop down to catch a fish.",
+    "hint": "Its name says bald, but an adult has white feathers covering its head.",
+    "aliases": [
+      "American bald eagle"
+    ]
+  },
+  {
+    "answer": "Liberty Bell",
+    "icon": "🔔",
+    "clue": "People visit Philadelphia to see this famous symbol of freedom.",
+    "hint": "Look for a large bronze bell with a long crack in its side.",
+    "aliases": []
+  },
+  {
+    "answer": "Statue of Liberty",
+    "icon": "🗽",
+    "clue": "This giant figure welcomes ships to New York Harbor.",
+    "hint": "She wears a crown and holds a torch high above her head.",
+    "aliases": [
+      "Lady Liberty"
+    ]
+  },
+  {
+    "answer": "Fourth of July",
+    "icon": "🎆",
+    "clue": "On this summer holiday, families gather for cookouts and watch the sky after dark.",
+    "hint": "It celebrates American independence on the fourth day of the seventh month.",
+    "aliases": [
+      "Independence Day",
+      "July Fourth",
+      "Fourth of July holiday"
+    ]
+  },
+  {
+    "answer": "Uncle Sam",
+    "icon": "🎩",
+    "clue": "This imaginary American character dresses in red, white, and blue.",
+    "hint": "In a famous poster, he wears a tall hat and points straight at you.",
+    "aliases": []
+  },
+  {
+    "answer": "White House",
+    "icon": "🏛️",
+    "clue": "This famous home in Washington, DC has an office called the Oval Office.",
+    "hint": "The president lives in it, and its name tells you its color.",
+    "aliases": [
+      "the White House"
+    ]
+  },
+  {
+    "answer": "National anthem",
+    "icon": "🎵",
+    "clue": "Fans often stand to hear this song before a ballgame.",
+    "hint": "In the United States, it begins with the words O say can you see.",
+    "aliases": [
+      "Star Spangled Banner",
+      "The Star Spangled Banner"
+    ]
   }
 ];
