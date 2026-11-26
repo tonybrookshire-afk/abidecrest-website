@@ -15,6 +15,10 @@ const scene = document.querySelector("#scene");
 const object = document.querySelector("#object");
 const parts = [".head", ".torso", ".left-arm", ".right-arm", ".left-leg", ".right-leg"]
   .map(selector => document.querySelector(selector));
+const letterInput = document.querySelector("#letter-guess");
+const letterSubmit = document.querySelector("#try-letter");
+const tried = document.querySelector("#tried");
+const guesses = new Set();
 let deck = [];
 let puzzle;
 let remainingLetters;
@@ -28,7 +32,7 @@ const resultTitle = document.querySelector("#result-title");
 const resultAnswer = document.querySelector("#result-answer");
 const resultDetail = document.querySelector("#result-detail");
 const encouragement = document.querySelector("#encouragement");
-function updateProgress(){ const available=parts.length-partCount; partsCount.textContent=available+" of "+parts.length+" parts remaining"; progress.value=partCount; progressCaption.textContent=partCount+" of "+parts.length+" parts revealed"; }
+function updateProgress(){ const available=parts.length-partCount; partsCount.textContent=available+" of "+parts.length+" parts remaining"; progress.value=partCount; progressCaption.textContent=available === 1 ? "One part left! A wrong letter will end the round." : partCount+" of "+parts.length+" parts showing"; partButton.textContent = available === 1 ? "Reveal final part and answer" : "Add a part for a letter"; }
 function encourage(message){encouragement.textContent="Shell says: "+message;}
 
 function shuffled(items) {
@@ -74,6 +78,10 @@ function startRound() {
   puzzle = deck.pop();
   remainingLetters = shuffled(Array.from({length:normalize(puzzle.answer).length}, (_, i) => i));
   revealedLetters = new Set();
+  guesses.clear();
+  tried.textContent = "";
+  letterInput.value = "";
+  letterSubmit.disabled = letterInput.disabled = false;
   partCount = 0;
   finished = false;
   for (const part of parts) part.hidden = true;
@@ -93,6 +101,7 @@ function startRound() {
 
 function endRound(correct) {
   finished = true;
+  letterSubmit.disabled = letterInput.disabled = true;
   guess.disabled = submit.disabled = hintButton.disabled = partButton.disabled = true;
   object.textContent = puzzle.icon;
   object.classList.add("revealed");
@@ -122,11 +131,44 @@ partButton.addEventListener("click", () => {
     endRound(false);
     return;
   }
+  if (!remainingLetters.length) return endRound(true);
   updateProgress();
   if (available === 1) partButton.textContent = "Reveal final part and answer";
   encourage("Look at the letters and clues.");
   status.textContent = available === 1 ? "One part left. Guess now or reveal the answer." : "One letter revealed.";
   showWord();
+});
+
+document.querySelector("#letter-form").addEventListener("submit", event => {
+  event.preventDefault();
+  const letter = letterInput.value.trim().toUpperCase();
+  if (finished || !/^[A-Z]$/.test(letter)) return;
+  letterInput.value = "";
+  if (guesses.has(letter)) {
+    status.textContent = "You already tried " + letter + ". Choose another letter.";
+    return;
+  }
+  guesses.add(letter);
+  tried.textContent = "Letters tried: " + [...guesses].join(" · ");
+  const answer = normalize(puzzle.answer).toUpperCase();
+  if (answer.includes(letter)) {
+    remainingLetters = remainingLetters.filter(index => {
+      if (answer[index] !== letter) return true;
+      revealedLetters.add(index);
+      return false;
+    });
+    const earnedPart = partCount > 0;
+    if (earnedPart) parts[--partCount].hidden = true;
+    if (!remainingLetters.length) return endRound(true);
+    status.textContent = letter + " is in the word!" + (earnedPart ? " One part removed." : "");
+  } else {
+    parts[partCount++].hidden = false;
+    if (partCount === parts.length) return endRound(false);
+    status.textContent = "No " + letter + " this time. One part added.";
+  }
+  showWord();
+  updateProgress();
+  letterInput.focus();
 });
 
 hintButton.addEventListener("click", () => {
