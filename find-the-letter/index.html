@@ -59,18 +59,14 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline:3px solid 
 .character-list figure { margin:0; text-align:center; font-weight:750 }
 .character-portrait { position:relative; overflow:hidden; width:clamp(68px,17vw,94px); aspect-ratio:1; border-radius:50%; border:2px solid #d9c6b4; background:#f9edda }
 .character-portrait img { position:absolute; width:var(--sheet-width); height:auto; max-width:none; top:var(--crop-top); left:var(--crop-left) }
-.character-barnaby { --sheet-width:338%; --crop-top:0%; --crop-left:-33% }
-.character-rascal { --sheet-width:327%; --crop-top:-64%; --crop-left:-180% }
+.character-barnaby img, .character-rascal img { width:100%; height:100%; top:0; left:0; object-fit:cover; object-position:center top }
 .character-list figcaption { margin-top:4px }
 
 .character-list button{display:flex;flex-direction:column;align-items:center;gap:5px;background:#fff6e9;padding:8px 12px;border:2px solid transparent;border-radius:16px;min-width:88px}
 .character-list button[aria-pressed="true"]{background:#e5ddff;border-color:var(--plum)}
 .character-shell{--sheet-width:167%;--crop-top:-20%;--crop-left:0%}
 .presenter-friend{position:relative;width:100%;aspect-ratio:384/340;overflow:hidden}
-.presenter-friend img{position:absolute;max-width:none;height:auto}
-.presenter-barnaby{transform:scaleX(-1)}
-.presenter-barnaby img{width:132.8%;left:13.5%;top:0;clip-path:polygon(13.6% 10.0%, 15.8% 5.8%, 18.6% 5.2%, 20.8% 2.5%, 24.7% 1.7%, 28.9% 0.0%, 31.3% 2.5%, 33.9% 6.7%, 34.6% 11.5%, 36.1% 16.7%, 35.4% 23.1%, 39.4% 25.4%, 44.2% 29.2%, 48.9% 32.9%, 53.3% 39.2%, 55.3% 44.8%, 54.6% 51.0%, 52.1% 55.2%, 48.1% 59.6%, 48.1% 63.7%, 46.1% 66.3%, 43.9% 67.7%, 42.9% 75.4%, 42.4% 82.7%, 45.7% 86.7%, 48.2% 90.2%, 47.9% 94.0%, 45.8% 96.3%, 36.9% 96.9%, 31.7% 95.8%, 28.6% 92.7%, 28.1% 88.5%, 26.8% 84.4%, 23.1% 88.3%, 21.1% 93.1%, 17.5% 95.4%, 10.4% 96.9%, 3.8% 96.7%, 2.4% 94.4%, 3.5% 89.6%, 6.0% 85.8%, 8.9% 83.3%, 9.2% 76.0%, 10.3% 69.0%, 8.8% 67.5%, 5.8% 65.4%, 3.6% 62.1%, 1.4% 57.5%, 0.8% 51.9%, 1.4% 46.0%, 3.3% 41.0%, 6.8% 36.0%, 11.5% 32.1%, 14.3% 29.0%, 13.1% 24.2%, 13.6% 18.5%, 14.6% 14.0%)}
-.presenter-rascal img{width:185.6%;left:-79.9%;top:-38.2%;clip-path:polygon(62.9% 31.9%, 65.1% 32.7%, 67.6% 37.7%, 69.3% 36.7%, 72.4% 36.7%, 74.9% 40.8%, 77.1% 42.7%, 80.3% 42.1%, 80.6% 44.8%, 79.4% 48.5%, 77.9% 51.5%, 77.6% 56.3%, 76.9% 59.6%, 78.6% 56.9%, 80.3% 54.0%, 82.1% 51.2%, 84.7% 49.2%, 87.8% 49.4%, 90.4% 51.0%, 92.2% 54.2%, 92.9% 59.4%, 91.8% 64.0%, 90.1% 67.9%, 89.3% 72.7%, 88.9% 76.3%, 87.6% 77.5%, 86.8% 74.4%, 86.3% 70.8%, 86.4% 67.7%, 85.3% 66.5%, 83.8% 66.5%, 81.8% 67.7%, 80.3% 71.5%, 82.2% 76.3%, 84.4% 82.7%, 87.6% 89.2%, 90.4% 90.6%, 93.1% 91.3%, 93.1% 93.8%, 91.9% 95.6%, 85.6% 95.8%, 81.1% 93.1%, 76.7% 88.3%, 74.0% 84.8%, 71.0% 88.8%, 68.6% 92.1%, 64.9% 95.2%, 57.9% 96.5%, 57.2% 94.0%, 58.3% 90.4%, 61.9% 86.0%, 60.0% 84.6%, 57.2% 86.9%, 52.8% 88.1%, 49.7% 87.1%, 47.5% 83.8%, 46.0% 78.8%, 46.1% 72.5%, 47.9% 69.2%, 50.8% 66.5%, 54.2% 64.8%, 58.1% 64.0%, 59.2% 60.6%, 60.6% 57.3%, 59.7% 54.8%, 58.9% 51.5%, 59.3% 47.1%, 60.8% 43.8%, 62.8% 42.5%)}
+.presenter-friend img{display:block;width:100%;height:100%;object-fit:contain}
 </style>
 </head>
 <body>
@@ -105,15 +101,15 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline:3px solid 
     </section>
     <figure class="shell-presenter" id="active-presenter">
       <div class="shell-standing"><img src="art/shell.webp" width="640" height="681" alt="Shell standing with his clipboard, wearing glasses and a green visor" decoding="async"></div>
-      <div class="presenter-friend" id="friend-presenter" hidden><img id="friend-presenter-image" src="art/barnaby-duo.webp" width="720" height="480" alt="" decoding="async"></div><figcaption id="presenter-name" aria-live="polite">Shell</figcaption>
+      <div class="presenter-friend" id="friend-presenter" hidden><img id="friend-presenter-image" src="art/barnaby-presenter.png" alt="" decoding="async"></div><figcaption id="presenter-name" aria-live="polite">Shell</figcaption>
     </figure>
   </div>
   <section class="character-friends" aria-labelledby="friends-heading">
     <h2 id="friends-heading">Play with our friends</h2>
     <div class="character-list" role="group" aria-label="Choose your presenter">
       <button type="button" data-presenter="shell" aria-pressed="true"><span class="character-portrait character-shell"><img src="art/shell.webp" alt="" decoding="async"></span><span>Shell</span></button>
-      <button type="button" data-presenter="barnaby" aria-pressed="false"><span class="character-portrait character-barnaby"><img src="art/barnaby-duo.webp" alt="" decoding="async"></span><span>Barnaby</span></button>
-      <button type="button" data-presenter="rascal" aria-pressed="false"><span class="character-portrait character-rascal"><img src="art/barnaby-duo.webp" alt="" decoding="async"></span><span>Rascal</span></button>
+      <button type="button" data-presenter="barnaby" aria-pressed="false"><span class="character-portrait character-barnaby"><img src="art/barnaby-presenter.png" loading="lazy" alt="" decoding="async"></span><span>Barnaby</span></button>
+      <button type="button" data-presenter="rascal" aria-pressed="false"><span class="character-portrait character-rascal"><img src="art/rascal-presenter.png" loading="lazy" alt="" decoding="async"></span><span>Rascal</span></button>
     </div>
   </section>
   <section class="stats" aria-labelledby="stats-heading">
@@ -362,7 +358,12 @@ function choosePresenter(name, save = true) {
   friend.hidden = name === "shell";
   friend.className = "presenter-friend presenter-" + name;
   const label = name[0].toUpperCase() + name.slice(1);
-  document.querySelector("#friend-presenter-image").alt = label + " presenting the letter game";
+  const presenterImage = document.querySelector("#friend-presenter-image");
+  if (name !== "shell") {
+    const source = "art/" + name + "-presenter.png";
+    if (presenterImage.getAttribute("src") !== source) presenterImage.src = source;
+    presenterImage.alt = label + " presenting the letter game";
+  }
   document.querySelector("#presenter-name").textContent = label;
   for (const button of presenterButtons) button.setAttribute("aria-pressed", String(button.dataset.presenter === name));
   if (save) { try { localStorage.setItem(presenterKey, name); } catch {} }
