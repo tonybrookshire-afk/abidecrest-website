@@ -49,7 +49,7 @@ button:disabled{opacity:.55;cursor:default}
 @media(max-width:650px){.game{grid-template-columns:1fr}.scene{min-height:205px}}
 </style>
 <script src="objects.js" defer></script>
-<script src="game.js?v=final-part-2" defer></script>
+<script src="game.js?v=letter-play-1" defer></script>
 </head>
 <body>
 <main>
@@ -74,6 +74,13 @@ button:disabled{opacity:.55;cursor:default}
       <input id="guess" type="text" autocomplete="off" spellcheck="false" maxlength="70" required>
       <button class="primary" id="submit" type="submit">Guess</button>
     </form>
+    <form id="letter-form" style="margin-top:1rem">
+      <label for="letter-guess">Guess a letter</label>
+      <input id="letter-guess" maxlength="1" pattern="[A-Za-z]" autocomplete="off" autocapitalize="characters" required>
+      <button id="try-letter">Try letter</button>
+    </form>
+    <p>A correct letter takes one part off. A miss adds one.</p>
+    <p id="tried"></p>
     <p id="status" role="status"></p><section id="round-result" class="round-result" aria-live="polite" hidden><h2 id="result-title"></h2><p>The mystery object was:</p><p class="answer" id="result-answer"></p><p id="result-detail"></p></section>
     <div class="actions">
       <button id="part" type="button">Add a part for a letter</button>
