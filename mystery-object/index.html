@@ -49,7 +49,7 @@ button:disabled{opacity:.55;cursor:default}
 @media(max-width:650px){.game{grid-template-columns:1fr}.scene{min-height:205px}}
 </style>
 <script src="objects.js" defer></script>
-<script src="game.js?v=letter-play-1" defer></script>
+<script src="game.js?v=play-stats-1" defer></script>
 </head>
 <body>
 <main>
@@ -91,6 +91,49 @@ button:disabled{opacity:.55;cursor:default}
   </div>
 </section>
 <noscript><p>Enable JavaScript to play.</p></noscript>
-</main>
+<section data-play-stats="mystery-object" style="margin:20px 0 0;padding:16px;border:1px solid currentColor;border-radius:14px"><h2>Your stats on this device</h2><dl style="display:flex;gap:12px 24px;flex-wrap:wrap;margin:10px 0"><div><dt>Page views</dt><dd data-stat="views" style="margin:0;font-weight:bold">0</dd></div><div><dt>Games played</dt><dd data-stat="games" style="margin:0;font-weight:bold">0</dd></div><div><dt>Active play time</dt><dd data-stat="time" style="margin:0;font-weight:bold">0</dd></div><div><dt>Objects solved</dt><dd data-stat="solved" style="margin:0;font-weight:bold">0</dd></div></dl><small>Saved in this browser.</small></section></main><script>const localPlay = (() => {
+  const panel = document.querySelector('[data-play-stats]');
+  const key = 'abidecrest.play.v1.' + panel.dataset.playStats;
+  const fields = [...panel.querySelectorAll('[data-stat]')];
+  let totals = {}, started = false, last = null, expiry = 0, persistent = true;
+  function update(field, value, best = false) {
+    if (persistent) {
+      try { totals = JSON.parse(localStorage.getItem(key)) || {}; }
+      catch { persistent = false; }
+    }
+    const previous = Number(totals[field]) || 0;
+    totals[field] = best ? Math.max(previous, value) : previous + value;
+    if (persistent) {
+      try { localStorage.setItem(key, JSON.stringify(totals)); }
+      catch { persistent = false; }
+    }
+    for (const item of fields) {
+      const n = Number(totals[item.dataset.stat]) || 0;
+      item.textContent = item.dataset.stat === 'time' ? Math.floor(n/60000)+'m '+Math.floor(n/1000)%60+'s' : n.toLocaleString();
+    }
+    if (!persistent) panel.querySelector('small').textContent = 'Stats for this visit only.';
+  }
+  function flush() {
+    if (last === null) return;
+    const now = performance.now();
+    const elapsed = Math.max(0, Math.min(expiry, now) - last);
+    last = now >= expiry ? null : now;
+    if (elapsed) update('time', elapsed);
+  }
+  function pause() { flush(); last = null; }
+  function action() {
+    if (document.hidden) return;
+    if (!started) { started = true; update('games', 1); }
+    const now = performance.now();
+    if (last !== null && now >= expiry) flush();
+    if (last === null) last = now;
+    expiry = now + 60000;
+  }
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+  window.addEventListener('pagehide', pause);
+  setInterval(flush, 5000);
+  update('views', 1);
+  return {action, pause, reset(){pause(); started=false;}, update};
+})();</script>
 </body>
 </html>
