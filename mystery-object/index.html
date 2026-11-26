@@ -45,7 +45,7 @@ button.primary{background:var(--purple);color:white}
 button:disabled{opacity:.55;cursor:default}
 :focus-visible{outline:3px solid #1b7669;outline-offset:3px}
 #status{min-height:1.5em;font-weight:750;margin-top:12px}
-#hint{background:#f5e7d9;padding:8px 10px;border-radius:10px}
+.progress-card{margin:12px 0;padding:12px 14px;border:1px solid #ded0bf;background:#fff5e3;border-radius:14px}.progress-card p{margin:0 0 6px;font-weight:800}.progress-card progress{width:100%;height:12px;accent-color:#6950a0;display:block}.progress-caption{font-size:.85rem;color:#665568;margin-top:5px}.round-result{padding:16px;margin:12px 0;background:#fff0d6;border:2px solid #d7a55e;border-radius:16px}.round-result.win{background:#e4f5e6;border-color:#75a57b}.round-result h2{font-size:1.35rem;color:var(--ink)}.round-result .answer{font-size:clamp(1.4rem,5vw,2rem);font-weight:900;color:#48336d;overflow-wrap:anywhere;margin:6px 0}.round-result p{margin:6px 0}.encouragement{padding:10px 12px;background:#f2e9f8;border-radius:12px;color:#48336d;font-weight:700;margin-top:12px}.mystery.revealed{font-size:2.65rem}#hint{background:#f5e7d9;padding:8px 10px;border-radius:10px}
 @media(max-width:650px){.game{grid-template-columns:1fr}.scene{min-height:205px}}
 </style>
 <script src="objects.js" defer></script>
@@ -68,19 +68,19 @@ button:disabled{opacity:.55;cursor:default}
     <h2>First clue</h2>
     <p id="clue"></p>
     <p id="hint" hidden></p>
-    <div id="word" class="word" role="img"></div>
+    <div class="progress-card"><p id="parts-count" role="status"></p><progress id="parts-progress" max="6" value="0" aria-label="Character parts revealed"></progress><div id="progress-caption" class="progress-caption"></div></div><div id="word" class="word" role="img"></div>
     <form id="guess-form">
       <label for="guess">Guess the whole object</label>
       <input id="guess" type="text" autocomplete="off" spellcheck="false" maxlength="70" required>
       <button class="primary" id="submit" type="submit">Guess</button>
     </form>
-    <p id="status" role="status"></p>
+    <p id="status" role="status"></p><section id="round-result" class="round-result" aria-live="polite" hidden><h2 id="result-title"></h2><p>The mystery object was:</p><p class="answer" id="result-answer"></p><p id="result-detail"></p></section>
     <div class="actions">
       <button id="part" type="button">Add a part for a letter</button>
       <button id="clue-button" type="button">Another hint</button>
       <button id="new" type="button">New object</button>
     </div>
-    <p id="parts-count"></p>
+    <p class="encouragement" id="encouragement">Shell says: Let’s solve a mystery!</p>
   </div>
 </section>
 <noscript><p>Enable JavaScript to play.</p></noscript>
