@@ -71,6 +71,7 @@ function showWord() {
 }
 
 function startRound() {
+  localPlay.reset();
   if (!deck.length) {
     deck = shuffled(mysteryObjects);
     if (deck.at(-1) === puzzle) deck.unshift(deck.pop());
@@ -100,6 +101,8 @@ function startRound() {
 }
 
 function endRound(correct) {
+  localPlay.pause();
+  if (correct) localPlay.update('solved', 1);
   finished = true;
   letterSubmit.disabled = letterInput.disabled = true;
   guess.disabled = submit.disabled = hintButton.disabled = partButton.disabled = true;
@@ -124,6 +127,7 @@ function endRound(correct) {
 
 partButton.addEventListener("click", () => {
   if (finished || partCount === parts.length) return;
+  localPlay.action();
   parts[partCount++].hidden = false;
   if (remainingLetters.length) revealedLetters.add(remainingLetters.pop());
   const available = parts.length - partCount;
@@ -148,6 +152,7 @@ document.querySelector("#letter-form").addEventListener("submit", event => {
     status.textContent = "You already tried " + letter + ". Choose another letter.";
     return;
   }
+  localPlay.action();
   guesses.add(letter);
   tried.textContent = "Letters tried: " + [...guesses].join(" · ");
   const answer = normalize(puzzle.answer).toUpperCase();
@@ -172,6 +177,7 @@ document.querySelector("#letter-form").addEventListener("submit", event => {
 });
 
 hintButton.addEventListener("click", () => {
+  localPlay.action();
   hint.hidden = false;
   hintButton.disabled = true;
   status.textContent = "Extra hint: " + puzzle.hint;
@@ -185,6 +191,7 @@ form.addEventListener("submit", event => {
     status.textContent = "Type your guess first.";
     return;
   }
+  localPlay.action();
   if ([puzzle.answer, ...puzzle.aliases].some(value => normalize(value) === answer)) {
     endRound(true);
   } else if (partCount === parts.length) {
