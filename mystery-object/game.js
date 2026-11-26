@@ -83,6 +83,7 @@ function startRound() {
   clue.textContent = puzzle.clue;
   hint.textContent = puzzle.hint;
   hint.hidden = true;
+  partButton.textContent = "Add a part for a letter";
   guess.value = "";
   guess.disabled = submit.disabled = hintButton.disabled = partButton.disabled = false;
   status.textContent = "";
@@ -117,9 +118,14 @@ partButton.addEventListener("click", () => {
   parts[partCount++].hidden = false;
   if (remainingLetters.length) revealedLetters.add(remainingLetters.pop());
   const available = parts.length - partCount;
-  partButton.disabled = !available;
-  updateProgress(); encourage(available ? "Good thinking! Look at the letters and clues." : "Give it your best final guess!");
-  status.textContent = available ? "One letter revealed." : hint.hidden ? "One last guess! You can still use the extra hint." : "One last guess!";
+  if (!available) {
+    endRound(false);
+    return;
+  }
+  updateProgress();
+  if (available === 1) partButton.textContent = "Reveal final part and answer";
+  encourage("Look at the letters and clues.");
+  status.textContent = available === 1 ? "One part left. Guess now or reveal the answer." : "One letter revealed.";
   showWord();
 });
 
