@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Shell’s Peekaboo Pond · AbideCrest</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f8eed8;color:#193e39;font-family:ui-rounded,"Trebuchet MS",sans-serif}header,main{max-width:900px;margin:auto}header{padding:14px 18px;display:flex;align-items:center;justify-content:space-between}header a{color:inherit}button{cursor:pointer;touch-action:manipulation;font:inherit;color:inherit}header button{background:#fff9e9;border:1px solid #b8b598;border-radius:24px;padding:10px 15px}main{text-align:center;padding:0 12px 20px}h1{font: bold clamp(27px,5vw,48px) Georgia,serif;margin:6px 0 15px}.pond{position:relative;isolation:isolate;overflow:hidden;height:clamp(305px,62svh,510px);border-radius:35px;background:radial-gradient(ellipse at 75% 11%,#fff1af 0 5%,transparent 5.5%),radial-gradient(ellipse at 80% 43%,#80ae78 0 25%,transparent 25.5%),radial-gradient(ellipse at 15% 40%,#5b9974 0 30%,transparent 30.5%),linear-gradient(#a7ded5,#f9e7a8 56%,#68c8ac 57%,#297f89 83%,#226476);box-shadow:inset 0 -8px 0 #1e6269}
+.water{position:absolute;inset:56% 0 0;background:repeating-radial-gradient(ellipse at 76% 55%,transparent 0 12%,#baf1d841 12.3% 12.8%,transparent 13.3% 21%)}.dock{position:absolute;left:-4%;bottom:9%;width:53%;height:14%;border-radius:30%;transform:rotate(4deg);background:repeating-linear-gradient(100deg,#b27a4a 0 17%,#68452e 18%,#cc9360 19%);box-shadow:0 9px #6b4936}.pond button{position:absolute;border:0;background:none;padding:0}.shell{bottom:19%;left:2%;width:45%;height:58%;transform-origin:bottom}.shell img,.rascal img{width:100%;height:100%;object-fit:contain}.pad{left:52%;top:57%;width:42%;height:35%}.leaf{position:absolute;inset:33% 7% 16%;background:conic-gradient(from 120deg,#658c34 0 5deg,transparent 6deg 35deg,#b4e56a 36deg,#66b554 170deg,#a7d75b);border-radius:50%;filter:drop-shadow(0 5px 0 #317856);animation:sway 2.6s ease-in-out infinite}.eyes{position:absolute;left:37%;top:18%;font-size:clamp(25px,6vw,44px)}.frog{left:14%;top:20%;width:24%;height:21%;font-size:clamp(40px,9vw,72px)!important;filter:drop-shadow(1px 4px 2px #17493150)}.bubble{right:7%;bottom:14%;width:clamp(74px,17vw,112px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 30% 20%,white, #d1f8f4 15%,#72cdd4 65%,#d4ffff 85%)!important;box-shadow:0 5px 12px #194f5966;font-size:38px!important}.rascal{right:1%;bottom:18%;height:52%;width:43%}.line{font:bold clamp(20px,4vw,30px) Georgia,serif;margin:15px 0}.start{left:50%;top:44%;transform:translate(-50%,-50%);padding:16px 32px!important;border-radius:40px;background:#fff4cb!important;font-weight:bold;font-size:24px;box-shadow:0 4px #a27741}.hint:after{content:"👆";position:absolute;right:5%;bottom:-8%;font-size:32px;animation:sway 1s infinite}.hop{animation:hop .68s ease}.arrive{animation:arrive .85s ease-out}.bob{animation:bob .68s ease}.pond button:focus-visible{outline:4px solid #fff}.flora{position:absolute;bottom:0;left:-8px;font-size:clamp(36px,8vw,72px);pointer-events:none}
+@keyframes sway{50%{transform:rotate(5deg) translateY(-3px)}}@keyframes hop{45%{transform:translateY(-55%) rotate(-12deg)}}@keyframes arrive{from{transform:translate(205%,202%) scale(.6)}52%{transform:translate(85%,-35%)}}@keyframes bob{75%{transform:rotate(4deg) scaleY(.95)}}@media(prefers-reduced-motion:reduce){*,*:after{animation:none!important}}
+</style></head><body><header><a href="/">← AbideCrest games</a><button id="sound" aria-pressed="true">Sound on</button></header><main><h1>Shell’s Peekaboo Pond</h1><section class="pond" aria-label="Pond story"><div class="water"></div><div class="dock"></div>
+<button class="shell" aria-label="Hear Shell’s prompt again"><img src="../../find-the-letter/art/shell.webp" alt=""></button>
+<button class="pad" aria-label="Tap the lily pad" hidden><span class="eyes">👀</span><span class="leaf"></span></button>
+<button class="frog" aria-label="Make Frog hop" hidden>🐸</button><button class="rascal" aria-label="Play peekaboo with Rascal" hidden><img src="../../find-the-letter/art/rascal-presenter.png" alt=""></button>
+<button class="bubble" aria-label="Follow the paw print" hidden>🐾</button><div class="flora">🌾</div><button class="start">Play peekaboo</button></section><p class="line" aria-live="polite">Who’s hiding in the pond?</p></main>
+<script>
+const el = name => document.querySelector('.' + name);
+const sound = document.querySelector('#sound');
+let voice = true, stage = 'start', hintTimer, bubbleTimer;
+function say(message) {
+  el('line').textContent = message;
+  if (voice && 'speechSynthesis' in window) {
+    speechSynthesis.cancel();
+    const words = new SpeechSynthesisUtterance(message);
+    words.lang = 'en-US'; words.rate = .86; speechSynthesis.speak(words);
+  }
+}
+function hint(target) {
+  clearTimeout(hintTimer);
+  document.querySelector('.hint')?.classList.remove('hint');
+  hintTimer = setTimeout(() => el(target).classList.add('hint'), 5000);
+}
+function animate(target, effect) {
+  const item = el(target); item.classList.remove('arrive','hop','bob');
+  void item.offsetWidth; item.classList.add(effect);
+}
+function begin() {
+  clearTimeout(bubbleTimer); stage = 'pad';
+  for (const name of ['start','rascal','bubble','frog']) el(name).hidden = true;
+  el('bubble').textContent = '🐾'; el('bubble').ariaLabel = 'Follow the paw print';
+  el('pad').hidden = false; say('Tap the lily pad!'); hint('pad');
+}
+el('start').onclick = begin;
+el('pad').onclick = () => {
+  stage = 'frog'; el('pad').hidden = true; el('frog').hidden = false;
+  animate('frog','arrive'); animate('shell','bob'); say('Peekaboo! Tap Frog for a hop!'); hint('frog');
+  bubbleTimer = setTimeout(() => {
+    el('bubble').hidden = false;
+    say('Tap Frog to hop, or tap the bubble!'); hint('bubble');
+  }, 5500);
+};
+el('frog').onclick = () => { animate('frog','hop'); animate('shell','bob'); say('Ribbit!'); };
+el('bubble').onclick = () => {
+  if (stage === 'rascal') return begin();
+  stage = 'rascal'; el('frog').hidden = true; el('rascal').hidden = false;
+  animate('rascal','hop'); el('bubble').textContent = '↻'; el('bubble').ariaLabel = 'Play again';
+  say('Peekaboo, Rascal! Tap Rascal!'); hint('rascal');
+};
+el('rascal').onclick = () => { animate('rascal','bob'); say('Peekaboo! Tap the round arrow to play again.'); hint('bubble'); };
+function promptAgain(){
+  const prompts = {start:'Tap play for peekaboo!',pad:'Tap the lily pad!',frog:el('bubble').hidden?'Tap Frog for a hop!':'Tap Frog to hop, or tap the bubble!',rascal:'Tap Rascal, or tap the round arrow to play again!'};
+  say(prompts[stage]);
+}
+el('shell').onclick = promptAgain;
+sound.onclick = () => { voice = !voice; sound.textContent = voice?'Sound on':'Sound off'; sound.setAttribute('aria-pressed',String(voice)); if(voice) promptAgain(); else window.speechSynthesis?.cancel(); };
+</script><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"cf53d17fe27e4d12bf6e0ae3ed3b5f63"}'></script></body></html>
