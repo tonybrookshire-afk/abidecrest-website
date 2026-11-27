@@ -62,4 +62,5 @@ if(dashLeft>0)ship([[-dashDirection*1.8,.28],[0,-.3],[0,.36]],'#91faff');
 ship([[-.34,.23],[0,driveLeft?1.8:boost?1.28:.82],[.34,.23]],driveLeft?'#ff479e':boost?'#ffe179':'#5bffe4');ship([[-1,.35],[-.78,-.24],[-.28,-.10],[0,-.9],[.28,-.10],[.78,-.24],[1,.35],[.3,.23],[0,.39],[-.3,.23]],'#dee6f2');ship([[-.32,.20],[0,-.72],[.32,.20],[0,.34]],'#cf426b');ship([[-.16,-.09],[0,-.48],[.16,-.09]],'#162945');
 for(const id of ['left','right','rail'])el(id).classList.toggle('held',held(id))}
 function frame(now){if(state==='race'&&previous&&!document.hidden)step(Math.min(.05,(now-previous)/1000));previous=now;draw();requestAnimationFrame(frame)}requestAnimationFrame(frame);
-</script></html>
+</script><!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "cf53d17fe27e4d12bf6e0ae3ed3b5f63"}'></script><!-- End Cloudflare Web Analytics -->
+</html>

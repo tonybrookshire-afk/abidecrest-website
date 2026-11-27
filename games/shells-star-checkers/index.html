@@ -96,4 +96,5 @@ $('hint').onclick=()=>{let m=choose(state,turn,'Expert');if(m){selected=m[0];hin
 $('undo').onclick=()=>{clearTimeout(timer);version++;if(!history.length)return;let h=history.pop();if($('mode').value==='cpu'&&h.turn===2&&history.length)h=history.pop();state=h.state;turn=h.turn;moves=h.moves;finished=0;selected=-1;hintTo=-1;say('Let’s try another move.');render();queueCPU();};
 $('restart').onclick=setup;$('mode').onchange=setup;$('helpers').onchange=render;
 for(let b of document.querySelectorAll('[data-guide]'))b.onclick=()=>{let g=b.dataset.guide;$('shell').hidden=g!=='shell';$('friend').hidden=g==='shell';$('name').textContent=g[0].toUpperCase()+g.slice(1);if(g!=='shell'){$('friendimg').src='/find-the-letter/art/'+g+'-presenter.png';$('friendimg').alt=$('name').textContent+' presenting the game';}for(let x of document.querySelectorAll('[data-guide]'))x.setAttribute('aria-pressed',String(x===b));say('Let’s find a great jump!');};setup();
-</script></body></html>
+</script><!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "cf53d17fe27e4d12bf6e0ae3ed3b5f63"}'></script><!-- End Cloudflare Web Analytics -->
+</body></html>
