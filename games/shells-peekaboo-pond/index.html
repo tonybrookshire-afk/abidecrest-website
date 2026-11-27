@@ -20,7 +20,7 @@
 @keyframes balance{0%{transform:translateY(16%) scale(.7);opacity:0}30%{transform:translateY(-19%) rotate(-7deg);opacity:1}54%{transform:translateY(0)}70%{transform:rotate(6deg)}}
 @keyframes rings{0%{opacity:.8;transform:scale(.75)}100%{opacity:0;transform:scale(1.35,1.7)}}
 @media(prefers-reduced-motion:reduce){.landing,.landing *,.landing:after{animation:none!important}}
-</style></head><body><header><a href="/">← AbideCrest games</a><button id="sound" aria-pressed="true">Sound on</button></header><main><h1>Shell’s Peekaboo Pond</h1><section class="pond" aria-label="Pond story"><div class="water"></div><div class="dock"></div>
+.pond{background:#78bdaa url(pond.webp) center/100% 100% no-repeat}.water,.dock,.flora{display:none}.pad{background: url(pad.webp) center/contain no-repeat!important;animation:sway 2.6s ease-in-out infinite}.pad span{display:none}.pond .frog{background:url(frog.webp) center bottom/auto 73% no-repeat;font-size:0!important}.landing .log{height:29%;background:url(log.webp) center/100% 100% no-repeat}.log svg{display:none}.landing .rascal{bottom:19%}.pond:not(.revealed) .bubble{background: url(paw.webp) center/contain no-repeat!important;font-size:0!important;box-shadow:none}@media(prefers-reduced-motion:reduce){.pad{animation:none}}</style></head><body><header><a href="/">← AbideCrest games</a><button id="sound" aria-pressed="true">Sound on</button></header><main><h1>Shell’s Peekaboo Pond</h1><section class="pond" aria-label="Pond story"><div class="water"></div><div class="dock"></div>
 <button class="shell" aria-label="Hear Shell’s prompt again"><img src="shell-point.webp" alt=""></button>
 <button class="pad" aria-label="Tap the lily pad" hidden><span class="eyes">👀</span><span class="leaf"></span></button>
 <button class="frog" aria-label="Make Frog hop" hidden>🐸</button><div class="landing" hidden><span class="tail" aria-hidden="true"></span><button class="log" aria-label="Tap the log to find Rascal"><svg viewBox="0 0 300 62" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="bark" x2="0" y2="1" gradientUnits="objectBoundingBox"><stop stop-color="#e1ae69"/><stop offset=".48" stop-color="#a5683c"/><stop offset="1" stop-color="#694329"/></linearGradient></defs><path d="M22 13 Q130 3 270 9 Q292 10 291 30 Q290 50 272 52 L27 56 Q8 56 7 35 Q6 18 22 13Z" fill="url(#bark)" stroke="#62432d" stroke-width="3"/><g fill="none" stroke="#77472a" stroke-width="3" stroke-linecap="round"><path d="M49 32q40-10 78-6t83-6m-157 23q50-5 84-3m24-6q45-5 81-4"/></g><ellipse cx="24" cy="35" rx="18" ry="20" fill="#e6b278" stroke="#805737" stroke-width="3"/><ellipse cx="24" cy="35" rx="10" ry="13" fill="none" stroke="#bc8452" stroke-width="3"/><path d="M43 15q26-13 49-6t34-1q-8 10-33 10t-50 2" fill="#8caa5c"/></svg></button><button class="rascal" aria-label="Play peekaboo with Rascal" hidden><img src="../../find-the-letter/art/rascal-presenter.png" alt=""></button></div>
@@ -46,6 +46,27 @@ function animate(target, effect) {
   const item = el(target); item.classList.remove('arrive','hop','bob');
   void item.offsetWidth; item.classList.add(effect);
 }
+const croak = new Audio('ribbit.wav');
+croak.preload = 'auto';
+croak.volume = .62;
+function ribbit() {
+  if (!voice) return;
+  croak.currentTime = 0;
+  croak.play().catch(() => {});
+}
+let context;
+function waterSound(start, end, duration) {
+  if (!voice) return;
+  const Engine = window.AudioContext || window.webkitAudioContext;
+  if (!Engine) return;
+  context ??= new Engine();
+  context.resume().catch(() => {});
+  const tone = context.createOscillator(), volume = context.createGain(), t = context.currentTime;
+  tone.frequency.setValueAtTime(start,t); tone.frequency.exponentialRampToValueAtTime(end,t+duration);
+  volume.gain.setValueAtTime(.001,t); volume.gain.exponentialRampToValueAtTime(.08,t+.012);
+  volume.gain.exponentialRampToValueAtTime(.001,t+duration);
+  tone.connect(volume); volume.connect(context.destination); tone.start(t); tone.stop(t+duration);
+}
 function begin() {
   clearTimeout(bubbleTimer); stage = 'pad'; el('landing').hidden = true; el('landing').classList.remove('splash'); el('pond').classList.remove('revealed');
   for (const name of ['start','rascal','bubble','frog']) el(name).hidden = true;
@@ -55,20 +76,21 @@ function begin() {
 el('start').onclick = begin;
 el('pad').onclick = () => {
   stage = 'frog'; el('pad').hidden = true; el('frog').hidden = false;
-  animate('frog','arrive'); animate('shell','bob'); say('Peekaboo! Tap Frog for a hop!'); hint('frog');
+  ribbit(); animate('frog','arrive'); animate('shell','bob'); say('Peekaboo! Tap Frog for a hop!'); hint('frog');
   bubbleTimer = setTimeout(() => {
     el('bubble').hidden = false;
     say('Tap Frog to hop, or tap the bubble!'); hint('bubble');
   }, 5500);
 };
-el('frog').onclick = () => { animate('frog','hop'); animate('shell','bob'); say('Ribbit!'); };
+el('frog').onclick = () => { animate('frog','hop'); animate('shell','bob'); window.speechSynthesis?.cancel(); ribbit(); el('line').textContent = 'Ribbit!'; };
 el('bubble').onclick = () => {
   if (stage === 'rascal') return begin();
-  stage = 'log'; el('frog').hidden = true; el('bubble').hidden = true;
+  waterSound(640,310,.12); stage = 'log'; el('frog').hidden = true; el('bubble').hidden = true;
   el('landing').hidden = false; el('tail').hidden = false; el('log').disabled = false;
   say('Whose tail is that? Tap the log!'); hint('log');
 };
 function land(){
+  setTimeout(() => { if (stage === 'rascal') waterSound(185,75,.22); }, 440);
   el('landing').classList.remove('splash'); void el('landing').offsetWidth; el('landing').classList.add('splash');
 }
 el('log').onclick = () => {
@@ -83,5 +105,5 @@ function promptAgain(){
   say(prompts[stage]);
 }
 el('shell').onclick = promptAgain;
-sound.onclick = () => { voice = !voice; sound.textContent = voice?'Sound on':'Sound off'; sound.setAttribute('aria-pressed',String(voice)); if(voice) promptAgain(); else window.speechSynthesis?.cancel(); };
+sound.onclick = () => { voice = !voice; sound.textContent = voice?'Sound on':'Sound off'; sound.setAttribute('aria-pressed',String(voice)); if(voice) promptAgain(); else { croak.pause(); window.speechSynthesis?.cancel(); } };
 </script><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"cf53d17fe27e4d12bf6e0ae3ed3b5f63"}'></script></body></html>
